@@ -1,0 +1,37 @@
+{
+    "name": "centire/shopify",
+    "description": "Shopify App Package",
+    "keywords": [
+        "shopify",
+        "centire"
+    ],
+    "license": "MIT",
+    "minimum-stability": "stable",
+    "authors": [
+        {
+            "name": "Nivesh",
+            "email": "niveshsaharan@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.0.0",
+        "laravel/framework": "~5.5",
+        "doctrine/dbal": "~2.5.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Centire\\ShopifyApp\\": "src/ShopifyApp"
+        }
+    },
+    "autoload-dev": {},
+    "config": {
+        "bin-dir": "bin"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Centire\\ShopifyApp\\ShopifyAppProvider"
+            ]
+        }
+    }
+}
