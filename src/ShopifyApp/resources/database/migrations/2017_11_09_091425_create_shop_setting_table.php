@@ -6,6 +6,8 @@ use Illuminate\Database\Migrations\Migration;
 
 class CreateShopSettingTable extends Migration
 {
+    use \Centire\Utilities\MysqlVersion;
+
     /**
      * Run the migrations.
      *

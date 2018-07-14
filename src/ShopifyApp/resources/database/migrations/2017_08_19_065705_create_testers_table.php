@@ -6,6 +6,8 @@ use Illuminate\Database\Migrations\Migration;
 
 class CreateTestersTable extends Migration
 {
+    use \Centire\Utilities\MysqlVersion;
+
     /**
      * Run the migrations.
      *

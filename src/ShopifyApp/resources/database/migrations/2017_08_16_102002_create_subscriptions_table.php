@@ -27,9 +27,9 @@ class CreateSubscriptionsTable extends Migration
             $table->integer('priority');
 
             if ($this->version() >= '5.7.8') {
-                $table->json('metadata')->default(null);
+                $table->json('metadata')->nullable(true)->default(null);
             } else {
-                $table->text('metadata')->default(null);
+                $table->text('metadata')->nullable(true)->default(null);
             }
 
             $table->boolean('is_active')->default(false);

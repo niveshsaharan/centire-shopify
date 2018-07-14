@@ -6,6 +6,8 @@ use Illuminate\Database\Migrations\Migration;
 
 class CreateSettingsTable extends Migration
 {
+    use \Centire\Utilities\MysqlVersion;
+
     /**
      * Run the migrations.
      *
@@ -24,9 +26,9 @@ class CreateSettingsTable extends Migration
             $table->string('identifier');
 
             if ($this->version() >= '5.7.8') {
-                $table->json('metadata')->default(null);
+                $table->json('metadata')->nullable(true)->default(null);
             } else {
-                $table->text('metadata')->default(null);
+                $table->text('metadata')->nullable(true)->default(null);
             }
 
             $table->integer('priority');

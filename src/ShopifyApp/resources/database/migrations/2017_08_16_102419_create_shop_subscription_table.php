@@ -6,6 +6,8 @@ use Illuminate\Database\Migrations\Migration;
 
 class CreateShopSubscriptionTable extends Migration
 {
+    use \Centire\Utilities\MysqlVersion;
+
     /**
      * Run the migrations.
      *
