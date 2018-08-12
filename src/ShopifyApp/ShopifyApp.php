@@ -2,6 +2,7 @@
 
 namespace Centire\ShopifyApp;
 
+use App\Shop;
 use Illuminate\Foundation\Application;
 
 class ShopifyApp
@@ -33,13 +34,22 @@ class ShopifyApp
 	}
 
 	/**
+	 * Get guard
+	 * @return mixed|string
+	 */
+	protected function getGuard()
+	{
+		return request()->route() && request()->route()->getAction('guard') ? request()->route()->getAction('guard') : 'shop.web';
+	}
+
+	/**
 	 *  Gets/sets the current shop.
 	 * @return \App\Shop|\Illuminate\Contracts\Auth\Authenticatable|null
 	 */
 	public function shop()
 	{
 		if (!$this->shop) {
-			$guard = request()->route()->getAction('guard') ?: 'shop.web';
+			$guard = $this->getGuard();
 
 			$shop = auth($guard)->user();
 
@@ -67,8 +77,8 @@ class ShopifyApp
 	 */
 	public function firstOrCreate($shopifyDomain, $shouldLogin = false)
 	{
-		$shopModel = $this->model();
-		$shop = $shopModel::firstOrCreate(['shopify_domain' => $shopifyDomain]);
+		//$shopModel = $this->model();
+		$shop = Shop::withTrashed()->firstOrCreate(['shopify_domain' => $shopifyDomain]);
 
 		if ($shouldLogin) {
 			$shop = $this->login($shop);
@@ -83,7 +93,7 @@ class ShopifyApp
 	 */
 	public function login($shop)
 	{
-		$guard = request()->route()->getAction('guard') ?: 'shop.web';
+		$guard = $this->getGuard();
 
 		// Login to shop
 		auth($guard)->login($shop);
@@ -101,7 +111,7 @@ class ShopifyApp
 	public function logout()
 	{
 		if ($this->shop) {
-			$guard = request()->route()->getAction('guard') ?: 'shop.web';
+			$guard = $this->getGuard();
 
 			auth($guard)->logout();
 
@@ -119,10 +129,12 @@ class ShopifyApp
 	 */
 	public function api()
 	{
+		$apiClass = config('shopify.api_class');
+
 		/**
 		 * @var BasicShopifyAPI $api
 		 */
-		$api = new BasicShopifyAPI();
+		$api = $apiClass ? new $apiClass() : new BasicShopifyAPI();
 		$api->setApiKey(config('shopify.api_key'));
 		$api->setApiSecret(config('shopify.api_secret'));
 

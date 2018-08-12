@@ -1,0 +1,9 @@
+{
+  "example.myshopify.com": {
+    "shop": "example.myshopify.com",
+    "rating": 5,
+    "message": "Great interface, easy to setup and looks awesome!",
+    "author":"Demo user",
+    "datetime": "2017-07-16T15:11:03Z"
+  }
+}

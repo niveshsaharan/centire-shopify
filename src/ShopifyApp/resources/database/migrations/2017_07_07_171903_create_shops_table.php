@@ -23,7 +23,7 @@ class CreateShopsTable extends Migration
 			$table->string('email')->nullable(true)->default(null);
 			$table->string('customer_email')->nullable(true)->default(null);
 			$table->string('shop_owner')->nullable(true)->default(null);
-			$table->string('shopify_domain')->nullable(true)->default(null);
+			$table->string('shopify_domain');
 			$table->string('domain')->nullable(true)->default(null);
 			$table->string('primary_locale', 25)->nullable(true)->default(null);
 			$table->string('address_1', 500)->nullable(true)->default(null);
@@ -53,11 +53,11 @@ class CreateShopsTable extends Migration
 				$table->text('shopify_scopes')->nullable(true)->default(null);
 			}
 
-			$table->bigInteger('charge_id')->nullable(true)->default(null);
 			$table->boolean('grandfathered')->default(false);
 			$table->string('api_token', 60)->unique()->nullable();
 			$table->rememberToken();
 			$table->timestamps();
+			$table->softDeletes();
 		});
 	}
 

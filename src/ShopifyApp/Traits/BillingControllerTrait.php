@@ -2,226 +2,181 @@
 
 namespace Centire\ShopifyApp\Traits;
 
+use App\Charge;
+use App\Plan;
 use Carbon\Carbon;
 use Centire\ShopifyApp\Events\ShopifyChargeActivated;
 use Centire\ShopifyApp\Facades\ShopifyApp;
 use Centire\ShopifyApp\Libraries\BillingPlan;
-use Centire\ShopifyApp\Models\ShopSubscription;
-use Centire\ShopifyApp\Models\Subscription;
-use Centire\ShopifyApp\Models\Tester;
 
 trait BillingControllerTrait
 {
-    /**
-     * Redirects to billing screen for Shopify.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function index()
-    {
-        if ($shop = ShopifyApp::shop()) {
-            $planDetails = $this->planDetails();
+	/**
+	 * Redirects to billing screen for Shopify.
+	 *
+	 * @return \Illuminate\Http\Response
+	 */
+	public function index()
+	{
+		if ($shop = ShopifyApp::shop()) {
+			$planDetails = $this->planDetails();
 
-            if ($planDetails) {
+			if ($planDetails) {
+				// Get the confirmation URL
+				$plan = new BillingPlan($shop, $planDetails['charge_type']);
 
-                // Get the confirmation URL
-                $plan = new BillingPlan($shop, $planDetails['charge_type']);
+				$plan->setDetails($planDetails);
 
-                $plan->setDetails($planDetails);
+				try {
+					$planConfirmationUrl = $plan->getConfirmationUrl();
+					// Do a Full Page redirect
+					return view('shopify-app::billing.fullpage_redirect', [
+						'url' => $planConfirmationUrl,
+					]);
+				} catch (\Exception $e) {
+					return redirect()->route('authenticate')->with(
+						'error',
+						'Exception: ' . $e->getMessage()
+					);
+				}
+			} else {
+				return redirect()->route('authenticate')->with(
+					'error',
+					'No active plan was found.'
+				);
+			}
+		}
 
-                try {
-                    $planConfirmationUrl = $plan->getConfirmationUrl();
+		return redirect()->route('authenticate')->with('error', 'Login is required to access the billing page.');
+	}
 
-                    // Do a Full Page redirect
-                    return view('shopify-app::billing.fullpage_redirect', [
-                        'url' => $planConfirmationUrl,
-                    ]);
-                } catch (\Exception $e) {
-                    return redirect()->route('authenticate')->with(
-                        'error',
-                        'Exception: ' . $e->getMessage()
-                    );
-                }
-            } else {
-                return redirect()->route('authenticate')->with(
-                    'error',
-                    'No active plan was found.'
-                );
-            }
-        }
+	/**
+	 * Processes the response from the customer
+	 * @return \Illuminate\Http\RedirectResponse
+	 */
+	public function process()
+	{
+		$shop = ShopifyApp::shop();
 
-        return redirect()->route('authenticate');
-    }
+		if ($shop) {
+			$chargeId = request('charge_id');
 
-    /**
-     * Processes the response from the customer
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function process()
-    {
-        /**
-         * @var $shop
-         */
-        $shop = ShopifyApp::shop();
+			$planDetails = $this->planDetails();
 
-        if ($shop) {
-            $chargeId = request('charge_id');
+			// Setup the plan and get the charge
+			$plan = new BillingPlan($shop, $planDetails['charge_type']);
+			$plan->setChargeId($chargeId);
 
-            /**
-             * @var ShopSubscription $shopSubscription
-             */
-            $shopSubscription = $shop->subscriptions()->whereChargeId($chargeId)->whereIsActive(false)->first();
+			try {
+				// Check the customer's answer to the billing
+				$chargeStatus = $plan->getCharge()->status;
 
-            if ($shopSubscription) {
-                $subscription = $shopSubscription->subscription;
-                $subscription = $subscription && $subscription->is_active == true && $subscription->plan && $subscription->plan->is_active == true ? $subscription : null;
+				// Create a charge (regardless of the status)
+				$charge = new Charge();
+				$charge->type = $planDetails['charge_type'] === 'recurring' ? Charge::CHARGE_RECURRING : Charge::CHARGE_ONETIME;
+				$charge->charge_id = $chargeId;
+				$charge->status = $chargeStatus;
+				$charge->name = $planDetails['name'];
+				$charge->price = $planDetails['price'];
+				$charge->trial_days = $planDetails['trial_days'];
+				$charge->discount_amount = $planDetails['discount_amount'];
+				$charge->plan_id = $planDetails['plan_id'];
+				$charge->test = $planDetails['test'];
+				$charge->terms = isset($planDetails['terms']) ? $planDetails['terms'] : null;
+				$charge->capped_amount = isset($planDetails['capped_amount']) ? $planDetails['capped_amount'] : null;
 
-                if ($subscription) {
-                    try {
+				if ($chargeStatus == 'accepted') {
+					$response = $plan->activate();
 
-                        // Setup the plan and get the charge
-                        $plan = new BillingPlan($shop, $subscription->billing_type);
-                        $plan->setChargeId($chargeId);
+					$charge->status = $response->status;
+					$charge->billing_on = $response->billing_on;
+					$charge->trial_ends_on = $response->trial_ends_on;
+					$charge->activated_on = $response->activated_on;
 
-                        // Check the customer's answer to the billing
-                        $charge = $plan->getCharge();
+					// [Event] Shopify Charge Activated
+					event(new ShopifyChargeActivated(
+						$shop,
+						[
+							'charge'       => $charge,
+						]
+					));
+				} else {
+					// Customer declined the charge
+					$charge->cancelled_on = Carbon::today()->format('Y-m-d');
+				}
 
-                        if ($charge->status == 'accepted') {
+				// Save and link to the shop
+				$shop->charges()->save($charge);
 
-                            // Customer accepted, activate the charge
-                            $charge = $plan->activate();
+				if ($chargeStatus == 'declined') {
+					// Customer declined the charge, abort
+					return redirect()->route('authenticate')->with(
+						'error',
+						'It seems you have declined the billing charge for this application.'
+					);
+				}
+			} catch (\Exception $e) {
+				dd($e->getMessage());
+				\Log::alert('Charge activation exception::' . $shop->shopify_domain . '::' . $e->getMessage());
 
-                            // Save the charge ID to the shop
-                            $shop->status = 1;
-                            $shop->charge_id = $chargeId;
-                            $shop->save();
+				return redirect()->route('authenticate')->with('error', 'An error has occurred while activating the charge.');
+			}
 
-                            // Create subscription
-                            $shopSubscription->update([
-                                'billing_on' => $charge->billing_on ? Carbon::parse($charge->billing_on)->setTimezone('UTC') : null,
-                                'trial_ends_on' => $charge->trial_ends_on ? Carbon::parse($charge->trial_ends_on)->setTimezone('UTC') : null,
-                                'activated_on' => $charge->activated_on ? Carbon::parse($charge->activated_on)->setTimezone('UTC') : null,
-                                'updated_at' => Carbon::parse($charge->updated_at)->setTimezone('UTC'),
-                                'is_active' => true,
-                            ]);
+			return redirect()->route('home');
+		} else {
+			return redirect()->route('authenticate')->with('error', 'Login is required to access the billing page.');
+		}
+	}
 
+	/**
+	 * Base plan to use for billing.
+	 * Setup as a function so its patchable.
+	 *
+	 * @return array|null
+	 */
+	protected function planDetails()
+	{
+		$shop = ShopifyApp::shop();
 
-                            // [Event] Shopify Charge Activated
-                            event(new ShopifyChargeActivated(
-                                $shop,
-                                [
-                                    'charge' => $charge,
-                                    'subscription' => $shopSubscription
-                                ]
-                            ));
+		$plan = Plan::orderBy('priority', 'ASC')->first();
 
-                            // Go to homepage of app
-                            return redirect()->route('home');
-                        } else {
+		if ($plan) {
+			// Price
+			$discountAmount = $plan->discount($shop);
+			$planPrice = $plan->price - $discountAmount;
 
-                            // Customer declined the charge, abort
-                            return redirect()->route('authenticate')->with(
-                                'error',
-                                'It seems you have declined the billing charge for this application'
-                            );
-                        }
-                    } catch (\Exception $e) {
-                        return redirect()->route('authenticate')->with(
-                            'error',
-                            'Exception: ' . $e->getMessage()
-                        );
-                    }
-                } else {
-                    return redirect()->route('authenticate')->with(
-                        'error',
-                        "The selected plan is not exist or no longer active."
-                    );
-                }
-            } else {
-                return redirect()->route('authenticate')->with(
-                    'error',
-                    'No such subscription was found.'
-                );
-            }
-        } else {
-            return redirect()->route('authenticate');
-        }
-    }
+			$planDetails = [
+				'name'            => $plan->name,
+				'price'           => $planPrice,
+				'return_url'      => url(config('shopify.billing_redirect')),
+				'trial_days'      => $plan->trial_days,
+				'charge_type'     => $plan->plan_type,
+				'discount_amount' => $discountAmount,
+				'plan_id'         => $plan->id,
+				'test'            => $planPrice <= 0 || $shop->isTester(),
+			];
 
-    /**
-     * Base plan to use for billing.
-     * Setup as a function so its patchable.
-     *
-     * @return array
-     */
-    protected function planDetails()
-    {
-        $shop = ShopifyApp::shop();
+			// Handle capped amounts for UsageCharge API
+			if (isset($plan->metadata['capped_amount']) && $plan->metadata['capped_amount'] > 0) {
+				$planDetails['capped_amount'] = $plan->metadata['capped_amount'];
+				$planDetails['terms'] = $plan->terms;
+			}
 
-        /**
-         * @var Subscription $subscription
-         */
-        $subscription = Subscription::whereIsActive(true)->orderBy('priority', 'ASC')->first();
+			// Grab the last charge for the shop (if any) to determine if this shop
+			// reinstalled the app so we can issue new trial days based on result
+			$lastCharge = $shop->charges()
+				->whereIn('type', [Charge::CHARGE_RECURRING, Charge::CHARGE_ONETIME])
+				->orderBy('created_at', 'desc')
+				->first();
 
-        $subscription = $subscription && $subscription->plan && $subscription->plan->is_active == true ? $subscription : null;
+			if ($lastCharge && $lastCharge->isCancelled()) {
+				// Return the new trial days, could result in 0
+				$planDetails['trial_days'] = $lastCharge->remainingTrialDaysFromCancel();
+			}
 
+			return $planDetails;
+		}
 
-        if ($subscription) {
-
-            // Price
-            $discountAmount = $this->discount($shop, $subscription);
-            $subscriptionPrice = $subscription->price - $discountAmount;
-
-            // Check if this is a test charge
-            $isTestCharge = $subscriptionPrice <= 0 || Tester::whereShopifyDomain($shop->shopify_domain)->whereIsActive(true)->count() ? true : false;
-
-            $chargeType = $subscription->billing_type;
-
-            $planDetails =  [
-                "name" => $subscription->display_name,
-                "price" => $subscriptionPrice > 0 ? number_format($subscriptionPrice, 2, '.', '') : 0,
-                "return_url" => url(config('shopify.billing_redirect')),
-                "trial_days" => (int)$subscription->trial_days,
-                'charge_type' => $chargeType,
-                'discount_amount' => $discountAmount,
-                'subscription_id' => $subscription->id,
-                "test" => $isTestCharge,
-            ];
-
-            // Handle capped amounts for UsageCharge API
-            if ($chargeType == 'usage') {
-                $planDetails['capped_amount'] = $subscription->metadata['capped_amount'];
-                $planDetails['terms'] = $subscription->metadata['billing_terms'];
-            }
-
-            return $planDetails;
-        }
-
-        return null;
-    }
-
-    /**
-     * @param $shop
-     * @param Subscription $subscription
-     * @return mixed
-     */
-    protected function discount($shop, $subscription)
-    {
-        // Discount
-        $discount = $subscription->discounts()
-            ->whereIsActive(true)
-            ->where('shopify_domain', $shop->shopify_domain)
-            ->orderBy('created_at', 'DESC')
-            ->get()
-            ->first();
-
-        $discountAmount = $discount && isset($discount->discount) && $discount->discount ? $discount->discount : 0;
-        $discountType = $discountAmount ? $discount->discount_type : null;
-        $discountAmount = $discountType == 'FLAT' ? $discountAmount : ($discountType == 'PERCENTAGE' && $discountAmount <= 100 ? ($subscription->price * $discountAmount) / 100 : 0);
-
-        $discountAmount = number_format($discountAmount, 2);
-        $discountAmount = $subscription->price > $discountAmount ? $discountAmount : $subscription->price;
-
-        return $discountAmount;
-    }
+		return null;
+	}
 }

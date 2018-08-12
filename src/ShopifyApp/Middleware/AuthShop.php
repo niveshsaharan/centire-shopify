@@ -9,51 +9,53 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AuthShop
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param \Closure $next
-     *
-     * @return mixed
-     */
-    public function handle(Request $request, Closure $next)
-    {
-        $shop = ShopifyApp::shop();
-        $shopParam = ShopifyApp::sanitizeShopDomain(request('shop'));
+	/**
+	 * Handle an incoming request.
+	 *
+	 * @param \Illuminate\Http\Request $request
+	 * @param \Closure $next
+	 *
+	 * @return mixed
+	 */
+	public function handle(Request $request, Closure $next)
+	{
+		$shop = ShopifyApp::shop();
 
-        // Check if shop has a session, also check the shops to ensure a match
-        if (
-            $shop === null ||
-            ($shopParam && $shopParam !== $shop->shopify_domain) === true ||
-            $shop->shopify_token === null
-        ) {
-            ShopifyApp::logout();
+		$shopParam = ShopifyApp::sanitizeShopDomain(request('shop'));
 
-            $routeParams = [];
-            if ($shopParam) {
-                $routeParams['shop'] = $shopParam;
-            }
-            return redirect()->route('authenticate', $routeParams);
-        }
+		// Check if shop has a session, also check the shops to ensure a match
+		if (
+			$shop === null ||
+			($shopParam && $shopParam !== $shop->shopify_domain) === true ||
+			$shop->shopify_token === null || $shop->trashed()
+		) {
+			ShopifyApp::logout();
 
-        if (!$shop->isActive()) {
-            return redirect()->route('authenticate', ['shop' => $shop->shopify_domain]);
-        }
+			$routeParams = [];
+			if ($shopParam) {
+				$routeParams['shop'] = $shopParam;
+			}
 
-        // Shop is OK, move on...
-        $response = $next($request);
-        if (!$response instanceof Response) {
-            // We need a response object to modify headers
-            $response = new Response($response);
-        }
+			return $request->expectsJson() ? abort(401, 'Authentication Required.') : redirect()->route('authenticate', $routeParams);
+		}
 
-        if (shopify_esdk_enabled()) {
-            // Headers applicable to ESDK only
-            $response->headers->set('P3P', 'CP="Not used"');
-            $response->headers->remove('X-Frame-Options');
-        }
+		if (!$shop->isActive()) {
+			return $request->expectsJson() ? abort(401, 'Authentication Required.') : redirect()->route('authenticate', ['shop' => $shop->shopify_domain]);
+		}
 
-        return $response;
-    }
+		// Shop is OK, move on...
+		$response = $next($request);
+		if (!$response instanceof Response) {
+			// We need a response object to modify headers
+			$response = new Response($response);
+		}
+
+		if (shopify_easdk_enabled()) {
+			// Headers applicable to EASDK only
+			$response->headers->set('P3P', 'CP="Not used"');
+			$response->headers->remove('X-Frame-Options');
+		}
+
+		return $response;
+	}
 }
