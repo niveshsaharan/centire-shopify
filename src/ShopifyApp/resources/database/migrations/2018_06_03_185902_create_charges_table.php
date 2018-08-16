@@ -16,7 +16,7 @@ class CreateChargesTable extends Migration
 		// Thanks to @ncpope of Github.com
 		Schema::create('charges', function (Blueprint $table) {
 			$table->increments('id');
-			$table->integer('charge_id')->unique();
+			$table->integer('charge_id')->unsigned()->unique();
 			$table->integer('shop_id')->unsigned();
 			$table->integer('plan_id')->unsigned();
 			$table->boolean('test');

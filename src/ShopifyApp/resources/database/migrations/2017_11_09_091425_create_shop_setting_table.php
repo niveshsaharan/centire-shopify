@@ -17,8 +17,8 @@ class CreateShopSettingTable extends Migration
     {
         Schema::create('shop_setting', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->integer('shop_id', false, true);
-            $table->integer('setting_id', false, true);
+            $table->integer('shop_id', false, true)->unsigned();
+            $table->integer('setting_id', false, true)->unsigned();
             $table->text('value')->nullable();
             $table->timestamps();
 
