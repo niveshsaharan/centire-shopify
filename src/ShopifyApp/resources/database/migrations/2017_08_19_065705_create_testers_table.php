@@ -16,7 +16,7 @@ class CreateTestersTable extends Migration
     public function up()
     {
         Schema::create('testers', function (Blueprint $table) {
-            $table->increments('id');
+            $table->increments('id')->unsigned();
             $table->string('shopify_domain', 500);
             $table->boolean('is_active')->default(false);
             $table->timestamps();

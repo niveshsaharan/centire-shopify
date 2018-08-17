@@ -16,7 +16,7 @@ class CreatePlansTable extends Migration
 	public function up()
 	{
 		Schema::create('plans', function (Blueprint $table) {
-			$table->increments('id');
+			$table->increments('id')->unsigned();
 			$table->string('name');
 			$table->string('display_name')->nullable();
 			$table->string('terms');

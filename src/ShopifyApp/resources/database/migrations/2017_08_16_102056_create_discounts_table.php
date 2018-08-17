@@ -16,7 +16,7 @@ class CreateDiscountsTable extends Migration
 	public function up()
 	{
 		Schema::create('discounts', function (Blueprint $table) {
-			$table->increments('id');
+			$table->increments('id')->unsigned();
 			$table->string('shopify_domain');
 			$table->string('coupon_code')->nullable();
 			$table->integer('amount');

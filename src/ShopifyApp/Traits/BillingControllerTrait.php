@@ -102,6 +102,7 @@ trait BillingControllerTrait
 					));
 				} else {
 					// Customer declined the charge
+                    $charge->status = 'declined';
 					$charge->cancelled_on = Carbon::today()->format('Y-m-d');
 				}
 
@@ -116,7 +117,6 @@ trait BillingControllerTrait
 					);
 				}
 			} catch (\Exception $e) {
-				dd($e->getMessage());
 				\Log::alert('Charge activation exception::' . $shop->shopify_domain . '::' . $e->getMessage());
 
 				return redirect()->route('authenticate')->with('error', 'An error has occurred while activating the charge.');
@@ -128,7 +128,7 @@ trait BillingControllerTrait
 		}
 	}
 
-	/**
+	/** 
 	 * Base plan to use for billing.
 	 * Setup as a function so its patchable.
 	 *

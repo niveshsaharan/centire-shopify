@@ -16,7 +16,7 @@ class CreateShopsTable extends Migration
 	public function up()
 	{
 		Schema::create('shops', function (Blueprint $table) {
-			$table->increments('id');
+			$table->increments('id')->unsigned();
 			$table->string('analytics_id')->nullable()->default(null);
 			$table->string('shopify_id')->nullable(true)->default(null);
 			$table->string('name')->nullable(true)->default(null);

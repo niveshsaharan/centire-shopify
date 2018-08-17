@@ -16,7 +16,7 @@ class CreateShopSettingTable extends Migration
     public function up()
     {
         Schema::create('shop_setting', function (Blueprint $table) {
-            $table->bigIncrements('id');
+            $table->bigIncrements('id')->unsigned();
             $table->integer('shop_id', false, true)->unsigned();
             $table->integer('setting_id', false, true)->unsigned();
             $table->text('value')->nullable();
