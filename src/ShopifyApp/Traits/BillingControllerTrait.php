@@ -92,14 +92,6 @@ trait BillingControllerTrait
 					$charge->billing_on = $response->billing_on;
 					$charge->trial_ends_on = $response->trial_ends_on;
 					$charge->activated_on = $response->activated_on;
-
-					// [Event] Shopify Charge Activated
-					event(new ShopifyChargeActivated(
-						$shop,
-						[
-							'charge'       => $charge,
-						]
-					));
 				} else {
 					// Customer declined the charge
                     $charge->status = 'declined';
@@ -116,6 +108,14 @@ trait BillingControllerTrait
 						'It seems you have declined the billing charge for this application.'
 					);
 				}
+				elseif ($charge->status == 'active')
+                {
+                    // [Event] Shopify Charge Activated
+                    event(new ShopifyChargeActivated( $shop,[
+                            'charge' => $charge,
+                        ]
+                    ));
+                }
 			} catch (\Exception $e) {
 				\Log::alert('Charge activation exception::' . $shop->shopify_domain . '::' . $e->getMessage());
 
@@ -128,7 +128,7 @@ trait BillingControllerTrait
 		}
 	}
 
-	/** 
+	/**
 	 * Base plan to use for billing.
 	 * Setup as a function so its patchable.
 	 *
