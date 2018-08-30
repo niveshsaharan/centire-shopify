@@ -42,7 +42,6 @@ class UpdateShopifyReviewProgressTest extends TestCase
 
 		$output = $commandTester->getDisplay();
 
-		$this->assertContains('1 reviews found.', $output);
 		$this->assertDatabaseHas('shop_setting', [
 		   'shop_id'    => $shop->id,
 		   'setting_id' => 100030,
