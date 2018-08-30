@@ -3,6 +3,7 @@
 namespace Centire\ShopifyApp\Traits;
 
 use App\Charge;
+use App\Http\Utilities\GlobalDataHelper;
 use App\Shop;
 use Centire\ShopifyApp\Facades\ShopifyApp;
 use Centire\ShopifyApp\Jobs\ScriptTagsInstaller;
@@ -32,8 +33,12 @@ trait AuthControllerTrait
 		$shopDomain = $request->get('shop');
 
 		if (!$shopDomain) {
+
+		    // Get shopify app details
+		    $shopifyApp = (new GlobalDataHelper())->apps(config('shopify.app_slug'));
+
 			// Back to login, no shop
-			return view('shopify-app::auth.index');
+			return view('shopify-app::auth.index', compact('shopifyApp'));
 		}
 
 		// Save shop domain to session

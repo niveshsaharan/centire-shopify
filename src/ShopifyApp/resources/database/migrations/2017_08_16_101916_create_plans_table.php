@@ -19,7 +19,7 @@ class CreatePlansTable extends Migration
 			$table->increments('id')->unsigned();
 			$table->string('name');
 			$table->string('display_name')->nullable();
-			$table->string('terms');
+			$table->string('terms')->nullable();
 			$table->text('description');
 			$table->integer('duration');
 			$table->integer('trial_days');
