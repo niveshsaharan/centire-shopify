@@ -20,7 +20,7 @@ trait AuthControllerTrait
 	 */
 	public function index()
 	{
-		return view('shopify-app::auth.index');
+		return redirect(route('authenticate'));
 	}
 
 	/**
