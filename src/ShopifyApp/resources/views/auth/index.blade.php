@@ -117,6 +117,7 @@
                                                            aria-label="Enter your Shopify store's URL"
                                                            aria-labelledby="TextField1Label"
                                                            aria-invalid="false"
+                                                           name="shop"
                                                            required
                                                            value="">
                                                     <div class="Polaris-TextField__Backdrop">
