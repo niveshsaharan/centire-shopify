@@ -157,8 +157,9 @@ trait BillingControllerTrait
 			];
 
 			// Handle capped amounts for UsageCharge API
-			if (isset($plan->metadata['capped_amount']) && $plan->metadata['capped_amount'] > 0) {
-				$planDetails['capped_amount'] = $plan->metadata['capped_amount'];
+			if (isset($plan->metadata['capped_amount'])) {
+			    $cappedAmount = (int) $plan->metadata['capped_amount'];
+				$planDetails['capped_amount'] = $cappedAmount ?: 1;
 				$planDetails['terms'] = $plan->terms;
 			}
 

@@ -23,6 +23,19 @@
             <!-- End Google Tag Manager (noscript) -->
         @endif
 
+        <script src="https://wchat.freshchat.com/js/widget.js"></script>
+        <script>
+			window.Env = <?php echo json_encode([
+                'freshdesk' => [
+                    'chat' => [
+                        'token' => config('freshdesk.chat.token'),
+                        'host' => config('freshdesk.chat.host'),
+                        'site_id' => config('freshdesk.chat.site_id'),
+                    ]
+                ],
+            ]); ?>
+        </script>
+
     </head>
     <body>
 
@@ -104,14 +117,14 @@
                                             <div class="">
                                                 <div class="Polaris-Labelled__LabelWrapper">
                                                     <div class="Polaris-Label">
-                                                        <label id="TextField1Label"
-                                                               for="TextField1"
+                                                        <label
+                                                               for="shop"
                                                                class="Polaris-Label__Text">Enter your Shopify store's
                                                             URL</label>
                                                     </div>
                                                 </div>
                                                 <div class="Polaris-TextField">
-                                                    <input id="TextField1"
+                                                    <input id="shop"
                                                            placeholder="example-shop.myshopify.com"
                                                            class="Polaris-TextField__Input"
                                                            aria-label="Enter your Shopify store's URL"
@@ -171,5 +184,13 @@
                 </div>
             </div>
         </div>
+
+        <script>
+			window.fcWidget.init({
+				token: window.Env.freshdesk.chat.token,
+				host: window.Env.freshdesk.chat.host,
+				siteId: window.Env.freshdesk.chat.site_id
+			});
+        </script>
     </body>
 </html>
