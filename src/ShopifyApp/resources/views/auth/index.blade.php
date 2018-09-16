@@ -26,6 +26,7 @@
         <script src="https://wchat.freshchat.com/js/widget.js"></script>
         <script>
 			window.Env = <?php echo json_encode([
+                'app_slug' => config('shopify.app_slug'),
                 'freshdesk' => [
                     'chat' => [
                         'token' => config('freshdesk.chat.token'),
@@ -189,7 +190,8 @@
 			window.fcWidget.init({
 				token: window.Env.freshdesk.chat.token,
 				host: window.Env.freshdesk.chat.host,
-				siteId: window.Env.freshdesk.chat.site_id
+				siteId: window.Env.freshdesk.chat.site_id,
+				tags: [window.Env.app_slug],
 			});
         </script>
     </body>
