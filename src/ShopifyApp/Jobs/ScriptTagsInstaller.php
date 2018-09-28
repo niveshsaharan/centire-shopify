@@ -80,7 +80,7 @@ class ScriptTagsInstaller implements ShouldQueue
 				$api->rest('POST', '/admin/script_tags.json', [
 					'script_tag' => array_only(
 						$scriptTag,
-						['src', 'event', 'event']
+						['src', 'event', 'display_scope']
 					),
 				]);
 
