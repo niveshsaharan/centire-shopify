@@ -240,17 +240,18 @@ trait AuthControllerTrait
 							if ($charge->status === 'pending') {
 								return redirect($charge->confirmation_url);
 							} else {
+                                \Log::info('Cancelling charge because charge status is invalid::' . $shop->shopify_domain);
 								$shopCharge->cancel();
 							}
 						}
 					}
 				} else {
+                    \Log::info('Cancelling charge because details was not found or not valid::' . $shop->shopify_domain);
 					$shopCharge->cancel();
 				}
 			} catch (\Exception $e) {
-				$shopCharge->cancel();
-
-				return redirect()->route('billing')->with('error', $e->getMessage());
+                \Log::alert('Charge verification exception::' . $shop->shopify_domain . '::' . $e->getMessage());
+				return redirect()->route('authenticate')->with('error', $e->getMessage());
 			}
 		}
 
