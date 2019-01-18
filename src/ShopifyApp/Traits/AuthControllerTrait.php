@@ -44,7 +44,8 @@ trait AuthControllerTrait
         session([
             'shopify_domain' => ShopifyApp::sanitizeShopDomain($shopDomain),
             'impersonate'    => 0,
-            ]);
+            '__referrer'     => $request->get('ref') ? $request->get('ref') : session('__referrer'),
+        ]);
 
         if ($request->get('code')) {
             // Handle a request with a code
@@ -166,6 +167,15 @@ trait AuthControllerTrait
                 $this->installWebhooks();
                 $this->installScriptTags();
 
+                // Save referrer to cache
+                $referrer = session('__referrer');
+
+                if ($referrer && !$shop->analytics_id) {
+                    \Cache::forever($shop->shopify_domain . '-referrer', $referrer);
+                }
+
+                session()->forget('__referrer');
+
                 // If app is not active
                 if ($shop->status != 1) {
                     $shop = $this->updateShopDetails($shop);
@@ -199,8 +209,10 @@ trait AuthControllerTrait
 
     /**
      * Verify shop charge
-     * @param $api
+     *
+     * @param      $api
      * @param Shop $shop
+     *
      * @return bool|\Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
      */
     protected function verifyCharge($shop)
@@ -210,10 +222,10 @@ trait AuthControllerTrait
         }
 
         $shopCharge = $shop->charges()
-            ->whereIn('type', [Charge::CHARGE_RECURRING, Charge::CHARGE_ONETIME])
-            ->whereNull('cancelled_on')
-            ->orderBy('created_at', 'desc')
-            ->first();
+                           ->whereIn('type', [Charge::CHARGE_RECURRING, Charge::CHARGE_ONETIME])
+                           ->whereNull('cancelled_on')
+                           ->orderBy('created_at', 'desc')
+                           ->first();
 
         if ($shopCharge) {
             try {
@@ -224,11 +236,11 @@ trait AuthControllerTrait
                 $charge = $billingPlan->getCharge();
 
                 if ($charge
-                            && (
-                                $charge->test == 0
-                                || $shop->isTester()
-                            )
-                        ) {
+                    && (
+                        $charge->test == 0
+                        || $shop->isTester()
+                    )
+                ) {
                     // Accepted: Redirect to activate
                     if ($charge->status === 'accepted') {
                         return redirect()->route('billing.process', ['charge_id' => $chargeId]);
@@ -260,7 +272,9 @@ trait AuthControllerTrait
 
     /**
      * Get and Save shop details
+     *
      * @param Shop $shop
+     *
      * @return mixed
      */
     protected function updateShopDetails(Shop $shop)
