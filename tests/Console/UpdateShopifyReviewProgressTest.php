@@ -11,46 +11,46 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 class UpdateShopifyReviewProgressTest extends TestCase
 {
-	use RefreshDatabase;
+    use RefreshDatabase;
 
-	/** @test */
-	public function can_run_successfully()
-	{
-		config(['shopify.app_slug' => 'app-reviews']);
-		config(['filesystems.disks.local.global' => app_path('../tests/fixtures')]);
+    /** @test */
+    public function can_run_successfully()
+    {
+        config(['shopify.app_slug' => 'app-reviews']);
+        config(['filesystems.disks.local.global' => app_path('../tests/fixtures')]);
 
-		$shop = factory(Shop::class)->create([
-			'shopify_domain' => 'example.myshopify.com',
-		]);
+        $shop = factory(Shop::class)->create([
+            'shopify_domain' => 'example.myshopify.com',
+        ]);
 
-		$shop2 = factory(Shop::class)->create([
-			'shopify_domain' => 'example1.myshopify.com',
-		]);
+        $shop2 = factory(Shop::class)->create([
+            'shopify_domain' => 'example1.myshopify.com',
+        ]);
 
-		$application = new ConsoleApplication();
+        $application = new ConsoleApplication();
 
-		$testedCommand = $this->app->make(UpdateShopifyReviewProgress::class);
-		$testedCommand->setLaravel($this->app);
-		$application->add($testedCommand);
+        $testedCommand = $this->app->make(UpdateShopifyReviewProgress::class);
+        $testedCommand->setLaravel($this->app);
+        $application->add($testedCommand);
 
-		$command = $application->find('progress:update:reviews');
-		$commandTester = new CommandTester($command);
+        $command = $application->find('progress:update:reviews');
+        $commandTester = new CommandTester($command);
 
-		$commandTester->execute([
-			'command' => $command->getName(),
-		]);
+        $commandTester->execute([
+            'command' => $command->getName(),
+        ]);
 
-		$output = $commandTester->getDisplay();
+        $output = $commandTester->getDisplay();
 
-		$this->assertDatabaseHas('shop_setting', [
-		   'shop_id'    => $shop->id,
-		   'setting_id' => 100030,
-		   'value'      => 5,
-		]);
-		$this->assertDatabaseMissing('shop_setting', [
-		   'shop_id'    => $shop2->id,
-		   'setting_id' => 100030,
-		   'value'      => 5,
-		]);
-	}
+        $this->assertDatabaseHas('shop_setting', [
+           'shop_id'    => $shop->id,
+           'setting_id' => 100030,
+           'value'      => 5,
+        ]);
+        $this->assertDatabaseMissing('shop_setting', [
+           'shop_id'    => $shop2->id,
+           'setting_id' => 100030,
+           'value'      => 5,
+        ]);
+    }
 }

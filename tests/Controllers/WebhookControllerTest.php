@@ -16,7 +16,7 @@ class WebhookControllerTest extends TestCase
     /**
      * @var $headers
      */
-    protected $headers; 
+    protected $headers;
 
     public function setUp()
     {

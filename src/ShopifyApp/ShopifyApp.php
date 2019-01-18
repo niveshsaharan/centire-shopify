@@ -7,162 +7,162 @@ use Illuminate\Foundation\Application;
 
 class ShopifyApp
 {
-	/**
-	 * Laravel application.
-	 *
-	 * @var \Illuminate\Foundation\Application
-	 */
-	public $app;
+    /**
+     * Laravel application.
+     *
+     * @var \Illuminate\Foundation\Application
+     */
+    public $app;
 
-	/**
-	 * The current shop.
-	 *
-	 * @var \App\Shop
-	 */
-	public $shop;
+    /**
+     * The current shop.
+     *
+     * @var \App\Shop
+     */
+    public $shop;
 
-	/**
-	 * Create a new confide instance.
-	 *
-	 * @param \Illuminate\Foundation\Application $app
-	 *
-	 * @return void
-	 */
-	public function __construct(Application $app)
-	{
-		$this->app = $app;
-	}
+    /**
+     * Create a new confide instance.
+     *
+     * @param \Illuminate\Foundation\Application $app
+     *
+     * @return void
+     */
+    public function __construct(Application $app)
+    {
+        $this->app = $app;
+    }
 
-	/**
-	 * Get guard
-	 * @return mixed|string
-	 */
-	protected function getGuard()
-	{
-		return request()->route() && request()->route()->getAction('guard') ? request()->route()->getAction('guard') : 'shop.web';
-	}
+    /**
+     * Get guard
+     * @return mixed|string
+     */
+    protected function getGuard()
+    {
+        return request()->route() && request()->route()->getAction('guard') ? request()->route()->getAction('guard') : 'shop.web';
+    }
 
-	/**
-	 *  Gets/sets the current shop.
-	 * @return \App\Shop|\Illuminate\Contracts\Auth\Authenticatable|null
-	 */
-	public function shop()
-	{
-		if (!$this->shop) {
-			$guard = $this->getGuard();
+    /**
+     *  Gets/sets the current shop.
+     * @return \App\Shop|\Illuminate\Contracts\Auth\Authenticatable|null
+     */
+    public function shop()
+    {
+        if (!$this->shop) {
+            $guard = $this->getGuard();
 
-			$shop = auth($guard)->user();
+            $shop = auth($guard)->user();
 
-			// Update shop instance
-			$this->shop = $shop;
-		}
+            // Update shop instance
+            $this->shop = $shop;
+        }
 
-		return $this->shop;
-	}
+        return $this->shop;
+    }
 
-	/**
-	 * @return \Illuminate\Config\Repository|mixed
-	 */
-	public function model()
-	{
-		$shopModel = config('shopify.shop_model');
+    /**
+     * @return \Illuminate\Config\Repository|mixed
+     */
+    public function model()
+    {
+        $shopModel = config('shopify.shop_model');
 
-		return class_exists($shopModel) ? $shopModel : \App\Shop::class;
-	}
+        return class_exists($shopModel) ? $shopModel : \App\Shop::class;
+    }
 
-	/**
-	 * First or create
-	 * @param $shopifyDomain
-	 * @return mixed
-	 */
-	public function firstOrCreate($shopifyDomain, $shouldLogin = false)
-	{
-		//$shopModel = $this->model();
-		$shop = Shop::withTrashed()->firstOrCreate(['shopify_domain' => $shopifyDomain]);
+    /**
+     * First or create
+     * @param $shopifyDomain
+     * @return mixed
+     */
+    public function firstOrCreate($shopifyDomain, $shouldLogin = false)
+    {
+        //$shopModel = $this->model();
+        $shop = Shop::withTrashed()->firstOrCreate(['shopify_domain' => $shopifyDomain]);
 
-		if ($shouldLogin) {
-			$shop = $this->login($shop);
-		}
+        if ($shouldLogin) {
+            $shop = $this->login($shop);
+        }
 
-		return $shop;
-	}
+        return $shop;
+    }
 
-	/**
-	 * Login
-	 * @param $shop
-	 */
-	public function login($shop)
-	{
-		$guard = $this->getGuard();
+    /**
+     * Login
+     * @param $shop
+     */
+    public function login($shop)
+    {
+        $guard = $this->getGuard();
 
-		// Login to shop
-		auth($guard)->login($shop);
+        // Login to shop
+        auth($guard)->login($shop);
 
-		$shop = auth($guard)->user();
+        $shop = auth($guard)->user();
 
-		$this->shop = $shop;
+        $this->shop = $shop;
 
-		return $this->shop;
-	}
+        return $this->shop;
+    }
 
-	/**
-	 * Logout
-	 */
-	public function logout()
-	{
-		if ($this->shop) {
-			$guard = $this->getGuard();
+    /**
+     * Logout
+     */
+    public function logout()
+    {
+        if ($this->shop) {
+            $guard = $this->getGuard();
 
-			auth($guard)->logout();
+            auth($guard)->logout();
 
-			// Update shop instance
-			$this->shop = null;
-		}
+            // Update shop instance
+            $this->shop = null;
+        }
 
-		session()->forget('shopify_domain');
-	}
+        session()->forget('shopify_domain');
+    }
 
-	/**
-	 * Gets an API instance.
-	 *
-	 * @return BasicShopifyAPI
-	 */
-	public function api()
-	{
-		$apiClass = config('shopify.api_class');
+    /**
+     * Gets an API instance.
+     *
+     * @return BasicShopifyAPI
+     */
+    public function api()
+    {
+        $apiClass = config('shopify.api_class');
 
-		/**
-		 * @var BasicShopifyAPI $api
-		 */
-		$api = $apiClass ? new $apiClass() : new BasicShopifyAPI();
-		$api->setApiKey(config('shopify.api_key'));
-		$api->setApiSecret(config('shopify.api_secret'));
+        /**
+         * @var BasicShopifyAPI $api
+         */
+        $api = $apiClass ? new $apiClass() : new BasicShopifyAPI();
+        $api->setApiKey(config('shopify.api_key'));
+        $api->setApiSecret(config('shopify.api_secret'));
 
-		return $api;
-	}
+        return $api;
+    }
 
-	/**
-	 * Ensures shop domain meets the specs.
-	 *
-	 * @param string $domain The shopify domain
-	 *
-	 * @return string|null|mixed
-	 */
-	public function sanitizeShopDomain($domain)
-	{
-		if (empty($domain)) {
-			return null;
-		}
+    /**
+     * Ensures shop domain meets the specs.
+     *
+     * @param string $domain The shopify domain
+     *
+     * @return string|null|mixed
+     */
+    public function sanitizeShopDomain($domain)
+    {
+        if (empty($domain)) {
+            return null;
+        }
 
-		$configEndDomain = config('shopify.myshopify_domain');
-		$domain = preg_replace('/https?:\/\//i', '', trim($domain));
+        $configEndDomain = config('shopify.myshopify_domain');
+        $domain = preg_replace('/https?:\/\//i', '', trim($domain));
 
-		if (strpos($domain, $configEndDomain) === false && strpos($domain, '.') === false) {
-			// No myshopify.com ($configEndDomain) in shop's name
-			$domain .= ".{$configEndDomain}";
-		}
+        if (strpos($domain, $configEndDomain) === false && strpos($domain, '.') === false) {
+            // No myshopify.com ($configEndDomain) in shop's name
+            $domain .= ".{$configEndDomain}";
+        }
 
-		// Return the host after cleaned up
-		return parse_url("http://{$domain}", PHP_URL_HOST);
-	}
+        // Return the host after cleaned up
+        return parse_url("http://{$domain}", PHP_URL_HOST);
+    }
 }

@@ -26,13 +26,13 @@
         <script src="https://wchat.freshchat.com/js/widget.js"></script>
         <script>
 			window.Env = <?php echo json_encode([
-                'app_slug' => config('shopify.app_slug'),
+                'app_slug'  => config('shopify.app_slug'),
                 'freshdesk' => [
                     'chat' => [
-                        'token' => config('freshdesk.chat.token'),
-                        'host' => config('freshdesk.chat.host'),
+                        'token'   => config('freshdesk.chat.token'),
+                        'host'    => config('freshdesk.chat.host'),
                         'site_id' => config('freshdesk.chat.site_id'),
-                    ]
+                    ],
                 ],
             ]); ?>
         </script>

@@ -11,20 +11,20 @@ use Illuminate\Queue\SerializesModels;
 
 class AfterAuthenticateJob implements ShouldQueue
 {
-	use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-	/**
-	 * @var Shop $shop
-	 */
-	public $shop;
+    /**
+     * @var Shop $shop
+     */
+    public $shop;
 
-	public function __construct($shop)
-	{
-		$this->shop = $shop;
-	}
+    public function __construct($shop)
+    {
+        $this->shop = $shop;
+    }
 
-	public function handle()
-	{
-		return true;
-	}
+    public function handle()
+    {
+        return true;
+    }
 }

@@ -68,7 +68,6 @@ class WebhookJobMakeCommand extends JobMakeCommand
         ");
     }
 
-
     /**
      * Get the desired class name from the input.
      *

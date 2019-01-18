@@ -177,7 +177,8 @@ class ShopifyWebGuard implements StatefulGuard, SupportsBasicAuth
         $this->recallAttempted = true;
 
         $this->viaRemember = !is_null($user = $this->provider->retrieveByToken(
-            $recaller->id(), $recaller->token()
+            $recaller->id(),
+            $recaller->token()
         ));
 
         return $user;
@@ -318,7 +319,8 @@ class ShopifyWebGuard implements StatefulGuard, SupportsBasicAuth
         }
 
         return $this->attempt(array_merge(
-            $this->basicCredentials($request, $field), $extraConditions
+            $this->basicCredentials($request, $field),
+            $extraConditions
         ));
     }
 
@@ -585,7 +587,8 @@ class ShopifyWebGuard implements StatefulGuard, SupportsBasicAuth
     {
         if (isset($this->events)) {
             $this->events->dispatch(new Attempting(
-                $credentials, $remember
+                $credentials,
+                $remember
             ));
         }
     }

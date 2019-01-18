@@ -6,14 +6,14 @@ use Tests\TestCase;
 
 class HomeControllerTest extends TestCase
 {
-	public function setUp()
-	{
-		parent::setUp();
-	}
+    public function setUp()
+    {
+        parent::setUp();
+    }
 
-	/** @test */
-	public function basic()
-	{
-		$this->assertTrue(true);
-	}
+    /** @test */
+    public function basic()
+    {
+        $this->assertTrue(true);
+    }
 }
