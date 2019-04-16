@@ -73,6 +73,8 @@ class ScriptTagsInstaller implements ShouldQueue
             ['limit' => 250, 'fields' => 'id,src']
         )->body->script_tags;
 
+        $validScriptTags = [];
+
         foreach ($this->scriptTags as $scriptTag) {
             // Check if the required scriptTag exists on the shop
             if (!$this->scriptTagExists($shopScriptTags, $scriptTag)) {
@@ -85,6 +87,16 @@ class ScriptTagsInstaller implements ShouldQueue
                 ]);
 
                 $created[] = $scriptTag;
+            }
+
+            $validScriptTags[] = $scriptTag['src'];
+        }
+
+        // Delete
+        foreach($shopScriptTags as $scriptTag)
+        {
+            if(! in_array($scriptTag->src, $validScriptTags)){
+                $api->rest('DELETE', '/admin/script_tags/' . $scriptTag->id . '.json', []);
             }
         }
 
