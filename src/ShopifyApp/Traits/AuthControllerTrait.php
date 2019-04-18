@@ -42,7 +42,7 @@ trait AuthControllerTrait
         }
 
         // Check if user is banned
-        if(BannedShop::isBanned($shopDomain))
+        if(BannedShop::isBanned(ShopifyApp::sanitizeShopDomain($shopDomain)))
         {
             return redirect()->route('authenticate')->with("error", "Sorry! You're banned.");
         }
