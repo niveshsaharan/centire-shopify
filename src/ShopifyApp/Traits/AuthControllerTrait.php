@@ -2,6 +2,7 @@
 
 namespace Centire\ShopifyApp\Traits;
 
+use App\BannedShop;
 use App\Charge;
 use App\Http\Utilities\GlobalDataHelper;
 use App\Shop;
@@ -38,6 +39,12 @@ trait AuthControllerTrait
 
             // Back to login, no shop
             return view('shopify-app::auth.index', compact('shopifyApp'));
+        }
+
+        // Check if user is banned
+        if(BannedShop::isBanned($shopDomain))
+        {
+            return redirect()->route('authenticate')->with("error", "Sorry! You're banned.");
         }
 
         // Save shop domain to session
