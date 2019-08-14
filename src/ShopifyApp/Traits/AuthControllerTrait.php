@@ -287,43 +287,81 @@ trait AuthControllerTrait
     protected function updateShopDetails(Shop $shop)
     {
         try {
-            $shopifyStore = $shop->api()->rest(
-                'GET',
-                '/admin/shop.json'
-            );
-
-            /**
-             * @var \Shopify_Store_Data $shopifyStore
-             */
-            $shopifyStore = $shopifyStore && isset($shopifyStore->body) && isset($shopifyStore->body->shop) && $shopifyStore->body->shop ? $shopifyStore->body->shop : null;
+            $shopifyStore = $shop->api()->graph('
+query
+{
+    shop
+    {
+        id
+        name
+        email
+        contactEmail
+        primaryDomain
+        {
+            host
+        }
+        myshopifyDomain
+        billingAddress
+        {
+            name
+            company
+            address1
+            address2
+            city
+            company
+            country
+            countryCodeV2 
+            latitude
+            longitude
+            province
+            provinceCode
+            phone
+            zip
+        }
+        currencyCode
+        currencyFormats
+        {
+            moneyFormat
+            moneyWithCurrencyFormat
+        }
+        ianaTimezone
+        plan
+        {
+            displayName
+            partnerDevelopment 
+            shopifyPlus
+        }
+    }
+}       
+            ')->body->shop;
 
             if ($shopifyStore) {
                 $shop->update([
-                    'shopify_id'                 => $shopifyStore->id,
+                    'gid'                       => $shopifyStore->id,
                     'name'                       => $shopifyStore->name,
-                    'email'                      => $shopifyStore->email ? $shopifyStore->email : $shopifyStore->customer_email,
-                    'customer_email'             => $shopifyStore->customer_email ? $shopifyStore->customer_email : '',
-                    'shop_owner'                 => isset($shopifyStore->shop_owner) && $shopifyStore->shop_owner ? $shopifyStore->shop_owner : '',
-                    'domain'                     => $shopifyStore->domain,
-                    'primary_locale'             => isset($shopifyStore->primary_locale) && $shopifyStore->primary_locale ? $shopifyStore->primary_locale : '',
-                    'address_1'                  => isset($shopifyStore->address1) && $shopifyStore->address1 ? $shopifyStore->address1 : '',
-                    'city'                       => isset($shopifyStore->city) && $shopifyStore->city ? $shopifyStore->city : '',
-                    'phone'                      => isset($shopifyStore->phone) && $shopifyStore->phone ? $shopifyStore->phone : '',
-                    'province'                   => isset($shopifyStore->province) && $shopifyStore->province ? $shopifyStore->province : '',
-                    'province_code'              => isset($shopifyStore->province_code) && $shopifyStore->province_code ? $shopifyStore->province_code : '',
-                    'country'                    => isset($shopifyStore->country) && $shopifyStore->country ? $shopifyStore->country : '',
-                    'country_name'               => isset($shopifyStore->country_name) && $shopifyStore->country_name ? $shopifyStore->country_name : '',
-                    'country_code'               => isset($shopifyStore->country_code) && $shopifyStore->country_code ? $shopifyStore->country_code : '',
-                    'zip'                        => isset($shopifyStore->zip) && $shopifyStore->zip ? $shopifyStore->zip : '',
-                    'latitude'                   => isset($shopifyStore->latitude) && $shopifyStore->latitude ? $shopifyStore->latitude : '',
-                    'longitude'                  => isset($shopifyStore->longitude) && $shopifyStore->longitude ? $shopifyStore->longitude : '',
-                    'currency'                   => isset($shopifyStore->currency) && $shopifyStore->currency ? $shopifyStore->currency : '',
-                    'money_format'               => isset($shopifyStore->money_format) && $shopifyStore->money_format ? $shopifyStore->money_format : '',
-                    'money_with_currency_format' => isset($shopifyStore->money_with_currency_format) && $shopifyStore->money_with_currency_format ? $shopifyStore->money_with_currency_format : '',
-                    'timezone'                   => isset($shopifyStore->timezone) && $shopifyStore->timezone ? $shopifyStore->timezone : '',
-                    'iana_timezone'              => isset($shopifyStore->iana_timezone) && $shopifyStore->iana_timezone ? $shopifyStore->iana_timezone : '',
-                    'shopify_plan_name'          => isset($shopifyStore->plan_name) && $shopifyStore->plan_name ? $shopifyStore->plan_name : '',
-                    'shopify_plan_display_name'  => isset($shopifyStore->plan_display_name) && $shopifyStore->plan_display_name ? $shopifyStore->plan_display_name : '',
+                    'email'                      => $shopifyStore->email ?: $shopifyStore->contactEmail,
+                    'customer_email'             => $shopifyStore->contactEmail ?: $shopifyStore->email,
+                    'shop_owner'                 => $shopifyStore->billingAddress->name ?: $shopifyStore->name,
+                    'domain'                     => $shopifyStore->primaryDomain->host,
+                    'primary_locale'             => '',
+                    'address_1'                  => isset($shopifyStore->billingAddress->address1) && $shopifyStore->billingAddress->address1 ? $shopifyStore->billingAddress->address1 : '',
+                    'city'                       => isset($shopifyStore->billingAddress->city) && $shopifyStore->billingAddress->city ? $shopifyStore->billingAddress->city : '',
+                    'phone'                      => isset($shopifyStore->billingAddress->phone) && $shopifyStore->billingAddress->phone ? $shopifyStore->billingAddress->phone : '',
+                    'province'                   => isset($shopifyStore->billingAddress->province) && $shopifyStore->billingAddress->province ? $shopifyStore->billingAddress->province : '',
+                    'province_code'              => isset($shopifyStore->billingAddress->provinceCode) && $shopifyStore->billingAddress->provinceCode? $shopifyStore->billingAddress->provinceCode: '',
+                    'country'                    => isset($shopifyStore->billingAddress->country) && $shopifyStore->billingAddress->country ? $shopifyStore->billingAddress->country : '',
+                    'country_name'               => isset($shopifyStore->billingAddress->country) && $shopifyStore->billingAddress->country ? $shopifyStore->billingAddress->country : '',
+                    'country_code'               => isset($shopifyStore->billingAddress->countryCodeV2) && $shopifyStore->billingAddress->countryCodeV2? $shopifyStore->countryCodeV2 : '',
+                    'zip'                        => isset($shopifyStore->billingAddress->zip) && $shopifyStore->billingAddress->zip ? $shopifyStore->billingAddress->zip : '',
+                    'latitude'                   => isset($shopifyStore->billingAddress->latitude) && $shopifyStore->billingAddress->latitude ? $shopifyStore->billingAddress->latitude : '',
+                    'longitude'                  => isset($shopifyStore->billingAddress->longitude) && $shopifyStore->billingAddress->longitude ? $shopifyStore->billingAddress->longitude : '',
+                    'currency'                   => isset($shopifyStore->currencyCode) && $shopifyStore->currencyCode ? $shopifyStore->currencyCode : '',
+                    'money_format'               => isset($shopifyStore->currencyFormats->moneyFormat) && $shopifyStore->currencyFormats->moneyFormat ? $shopifyStore->currencyFormats->moneyFormat : '',
+                    'money_with_currency_format' => isset($shopifyStore->currencyFormats->moneyWithCurrencyFormat) && $shopifyStore->currencyFormats->moneyWithCurrencyFormat ? $shopifyStore->currencyFormats->moneyWithCurrencyFormat : '',
+                    'timezone'                   => isset($shopifyStore->ianaTimezone) && $shopifyStore->ianaTimezone ? $shopifyStore->ianaTimezone : '',
+                    'iana_timezone'              => isset($shopifyStore->ianaTimezone) && $shopifyStore->ianaTimezone ? $shopifyStore->ianaTimezone : '',
+                    'shopify_plan_name'          => isset($shopifyStore->plan->displayName) && $shopifyStore->plan->displayName ? $shopifyStore->plan->displayName : '',
+                    'shopify_plan_display_name'  => isset($shopifyStore->plan->displayName) && $shopifyStore->plan->displayName ? $shopifyStore->plan->displayName : '',
                     'status'                     => 1,
                 ]);
             }
@@ -340,12 +378,7 @@ trait AuthControllerTrait
      */
     protected function installWebhooks()
     {
-        $webhooks = config('shopify.webhooks');
-        if (count($webhooks) > 0) {
-            dispatch(
-                new WebhooksInstaller(ShopifyApp::shop(), $webhooks)
-            )->onQueue(queueName('second'));
-        }
+        dispatch( new WebhooksInstaller(ShopifyApp::shop()))->onQueue(queueName('second'));
     }
 
     /**
@@ -355,12 +388,7 @@ trait AuthControllerTrait
      */
     protected function installScriptTags()
     {
-        $scriptTags = config('shopify.script_tags');
-        if (count($scriptTags) > 0) {
-            dispatch(
-                new ScriptTagsInstaller(ShopifyApp::shop(), $scriptTags)
-            )->onQueue(queueName('second'));
-        }
+        dispatch( new ScriptTagsInstaller(ShopifyApp::shop()) )->onQueue(queueName('second'));
     }
 
     /**

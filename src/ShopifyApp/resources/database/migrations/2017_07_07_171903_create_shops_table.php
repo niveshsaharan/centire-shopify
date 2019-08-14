@@ -34,7 +34,7 @@ class CreateShopsTable extends Migration
             $table->string('country')->nullable(true)->default(null);
             $table->string('country_name')->nullable(true)->default(null);
             $table->string('country_code')->nullable(true)->default(null);
-            $table->string('zip', 10)->nullable(true)->default(null);
+            $table->string('zip', 20)->nullable(true)->default(null);
             $table->string('latitude')->nullable(true)->default(null);
             $table->string('longitude')->nullable(true)->default(null);
             $table->string('currency', 3)->nullable(true)->default(null);

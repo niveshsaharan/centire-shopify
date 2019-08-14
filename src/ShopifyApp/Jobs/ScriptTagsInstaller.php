@@ -3,6 +3,7 @@
 namespace Centire\ShopifyApp\Jobs;
 
 use App\Shop;
+use Centire\ShopifyApp\Services\ScriptTagManager;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -21,24 +22,15 @@ class ScriptTagsInstaller implements ShouldQueue
     protected $shop;
 
     /**
-     * Script Tags list.
-     *
-     * @var array
-     */
-    protected $scriptTags;
-
-    /**
      * Create a new job instance.
      *
      * @param $shop - The shop object
-     * @param array $scriptTags The scriptTag list
      *
      * @return void
      */
-    public function __construct($shop, array $scriptTags)
+    public function __construct($shop)
     {
         $this->shop = $shop;
-        $this->scriptTags = $scriptTags;
     }
 
     /**
@@ -61,65 +53,7 @@ class ScriptTagsInstaller implements ShouldQueue
      */
     public function handle()
     {
-        // Keep track of whats created
-        $created = [];
-
-        // Get the current scriptTags installed on the shop
-        $api = $this->shop->api();
-
-        $shopScriptTags = $api->rest(
-            'GET',
-            '/admin/script_tags.json',
-            ['limit' => 250, 'fields' => 'id,src']
-        )->body->script_tags;
-
-        $validScriptTags = [];
-
-        foreach ($this->scriptTags as $scriptTag) {
-            // Check if the required scriptTag exists on the shop
-            if (!$this->scriptTagExists($shopScriptTags, $scriptTag)) {
-                // It does not... create the scriptTag
-                $api->rest('POST', '/admin/script_tags.json', [
-                    'script_tag' => array_only(
-                        $scriptTag,
-                        ['src', 'event', 'display_scope']
-                    ),
-                ]);
-
-                $created[] = $scriptTag;
-            }
-
-            $validScriptTags[] = $scriptTag['src'];
-        }
-
-        // Delete
-        foreach($shopScriptTags as $scriptTag)
-        {
-            if(! in_array($scriptTag->src, $validScriptTags)){
-                $api->rest('DELETE', '/admin/script_tags/' . $scriptTag->id . '.json', []);
-            }
-        }
-
-        return $created;
+        return (new ScriptTagManager($this->shop))->createScriptTags();
     }
 
-    /**
-     * Check if scriptTag is in the list.
-     *
-     * @param array $shopScriptTags The scriptTags installed on the shop
-     * @param array $scriptTag The scriptTag
-     *
-     * @return bool
-     */
-    protected function scriptTagExists(array $shopScriptTags, array $scriptTag)
-    {
-        foreach ($shopScriptTags as $shopScriptTag) {
-            if ($shopScriptTag->src === $scriptTag['src']) {
-                // Found the scriptTag in our list
-                return true;
-            }
-        }
-
-        return false;
-    }
 }
