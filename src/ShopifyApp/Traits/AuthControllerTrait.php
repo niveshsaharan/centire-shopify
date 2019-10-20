@@ -325,6 +325,7 @@ trait AuthControllerTrait
                     'shopify_plan_name'          => isset($shopifyStore->plan_name) && $shopifyStore->plan_name ? $shopifyStore->plan_name : '',
                     'shopify_plan_display_name'  => isset($shopifyStore->plan_display_name) && $shopifyStore->plan_display_name ? $shopifyStore->plan_display_name : '',
                     'status'                     => 1,
+                    'currencies' => isset($shopifyStore->enabled_presentment_currencies) && $shopifyStore->enabled_presentment_currencies ? $shopifyStore->enabled_presentment_currencies : ''
                 ]);
             }
         } catch (\Exception $e) {
