@@ -1,6 +1,6 @@
 {
     "name": "centire/shopify",
-    "version": "2.1.6",
+    "version": "2.1.7",
     "description": "Shopify App Package",
     "keywords": [
         "shopify",
@@ -17,7 +17,7 @@
     "require": {
         "php": ">=7.0.0",
         "laravel/framework": "~5.5",
-        "doctrine/dbal": "~2.9"
+        "doctrine/dbal": "^2.9"
     },
     "require-dev":{
     "orchestra/database": "~3.5",
