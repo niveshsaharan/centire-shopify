@@ -71,14 +71,13 @@ trait AuthControllerTrait
     public function impersonate(Request $request)
     {
         $shopDomain = $request->get('shop');
-        $code = $request->get('code');
 
         if (!$shopDomain) {
             // Back to login, no shop
             return redirect()->route('authenticate');
         }
 
-        if ($code && $code == config('shopify.impersonate_key')) {
+        if ($request->user()) {
             // Save shop domain to session
             session([
                 'shopify_domain' => ShopifyApp::sanitizeShopDomain($shopDomain),
