@@ -48,7 +48,8 @@ Route::group(['middleware' => ['web']], function () {
     */
 
     Route::match(['get', 'post'], '/impersonate', 'Centire\ShopifyApp\Controllers\AuthController@impersonate')
-        ->name('impersonate');
+        ->name('impersonate')
+        ->middleware('auth');
 
     /*
     |--------------------------------------------------------------------------
