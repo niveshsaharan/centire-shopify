@@ -18,7 +18,7 @@ class Billable
      */
     public function handle(Request $request, Closure $next)
     {
-        if (config('shopify.billing_enabled') === true) {
+        if (config('shopify.billing_enabled') === true && config('shopify.billing_free_plan_enabled') !== true) {
             $shop = ShopifyApp::shop();
 
             if (!$shop) {

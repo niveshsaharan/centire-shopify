@@ -487,7 +487,7 @@ class BasicShopifyAPI
         if ($this->private) {
             $uri = "https://{$this->apiKey}:{$this->apiPassword}@{$this->shop}{$path}";
         } else {
-            $uri = "https://{$this->shop}{$path}";
+            $uri = "https://{$this->shop}/admin/api/". config('shopify.api_version', '2019-10') . "{$path}";
         }
 
         $response = $this->client->request($type, $uri, $guzzleParams);

@@ -272,6 +272,9 @@ trait AuthControllerTrait
                 return redirect()->route('authenticate')->with('error', $e->getMessage());
             }
         }
+        else if(config('shopify.billing_free_plan_enabled') === true){
+            return true;
+        }
 
         return redirect()->route('billing');
     }
@@ -288,7 +291,7 @@ trait AuthControllerTrait
         try {
             $shopifyStore = $shop->api()->rest(
                 'GET',
-                '/admin/shop.json'
+                '/shop.json'
             );
 
             /**

@@ -69,7 +69,7 @@ class ScriptTagsInstaller implements ShouldQueue
 
         $shopScriptTags = $api->rest(
             'GET',
-            '/admin/script_tags.json',
+            '/script_tags.json',
             ['limit' => 250, 'fields' => 'id,src']
         )->body->script_tags;
 
@@ -79,7 +79,7 @@ class ScriptTagsInstaller implements ShouldQueue
             // Check if the required scriptTag exists on the shop
             if (!$this->scriptTagExists($shopScriptTags, $scriptTag)) {
                 // It does not... create the scriptTag
-                $api->rest('POST', '/admin/script_tags.json', [
+                $api->rest('POST', '/script_tags.json', [
                     'script_tag' => array_only(
                         $scriptTag,
                         ['src', 'event', 'display_scope']
@@ -96,7 +96,7 @@ class ScriptTagsInstaller implements ShouldQueue
         foreach($shopScriptTags as $scriptTag)
         {
             if(! in_array($scriptTag->src, $validScriptTags)){
-                $api->rest('DELETE', '/admin/script_tags/' . $scriptTag->id . '.json', []);
+                $api->rest('DELETE', '/script_tags/' . $scriptTag->id . '.json', []);
             }
         }
 

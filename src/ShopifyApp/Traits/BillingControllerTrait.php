@@ -21,7 +21,7 @@ trait BillingControllerTrait
         if ($shop = ShopifyApp::shop()) {
             $planDetails = $this->planDetails();
 
-            if ($planDetails) {
+            if ($planDetails && $planDetails['price'] > 0) {
                 // Get the confirmation URL
                 $plan = new BillingPlan($shop, $planDetails['charge_type']);
 
@@ -138,7 +138,12 @@ trait BillingControllerTrait
     {
         $shop = ShopifyApp::shop();
 
-        $plan = Plan::orderBy('priority', 'ASC')->first();
+        $plan = Plan::orderBy('priority', 'ASC')
+                    ->where('price', '>', 0)
+                    ->when(request('planId'), function($query){
+                        return $query->where('id', '=', request('planId'));
+                    })
+                    ->first();
 
         if ($plan) {
             // Price
