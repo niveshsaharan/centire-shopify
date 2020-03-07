@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Arr;
 
 class WebhooksInstaller implements ShouldQueue
 {
@@ -78,7 +79,7 @@ class WebhooksInstaller implements ShouldQueue
             if (!$this->webhookExists($shopWebhooks, $webhook)) {
                 // It does not... create the webhook
                 $api->rest('POST', '/webhooks.json', [
-                    'webhook' => array_only($webhook, [
+                    'webhook' => Arr::only($webhook, [
                         'topic',
                         'address',
                     ]),

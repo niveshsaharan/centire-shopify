@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Arr;
 
 class ScriptTagsInstaller implements ShouldQueue
 {
@@ -80,7 +81,7 @@ class ScriptTagsInstaller implements ShouldQueue
             if (!$this->scriptTagExists($shopScriptTags, $scriptTag)) {
                 // It does not... create the scriptTag
                 $api->rest('POST', '/script_tags.json', [
-                    'script_tag' => array_only(
+                    'script_tag' => Arr::only(
                         $scriptTag,
                         ['src', 'event', 'display_scope']
                     ),
