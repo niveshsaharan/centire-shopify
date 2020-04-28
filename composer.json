@@ -1,6 +1,6 @@
 {
     "name": "centire/shopify",
-    "version": "7.0.2",
+    "version": "7.0.3",
     "description": "Shopify App Package",
     "keywords": [
         "shopify",
@@ -20,11 +20,11 @@
         "doctrine/dbal": "^2.9"
     },
     "require-dev":{
-    "orchestra/database": "~3.5",
-    "orchestra/testbench": "~3.5",
-    "phpunit/phpunit": "~6.0||~7.0",
-    "squizlabs/php_codesniffer": "^3.0"
-},
+        "orchestra/database": "^5.0",
+        "orchestra/testbench": "^5.0",
+        "phpunit/phpunit": "^8.5",
+        "squizlabs/php_codesniffer": "^3.0"
+    },
     "autoload": {
         "psr-4": {
             "Centire\\ShopifyApp\\": "src/ShopifyApp"
