@@ -19,14 +19,14 @@ class ScriptTagsInstaller implements ShouldQueue
      *
      * @var Shop $shop
      */
-    protected $shop;
+    public $shop;
 
     /**
      * Script Tags list.
      *
      * @var array
      */
-    protected $scriptTags;
+    public $scriptTags;
 
     /**
      * Create a new job instance.

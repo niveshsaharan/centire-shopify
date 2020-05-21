@@ -19,14 +19,14 @@ class WebhooksInstaller implements ShouldQueue
      *
      * @var Shop $shop
      */
-    protected $shop;
+    public $shop;
 
     /**
      * Webhooks list.
      *
      * @var array
      */
-    protected $webhooks;
+    public $webhooks;
 
     /**
      * Create a new job instance.
