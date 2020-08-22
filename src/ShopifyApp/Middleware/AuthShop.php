@@ -43,6 +43,14 @@ class AuthShop
             return $request->expectsJson() ? abort(401, 'Authentication Required.') : redirect()->route('authenticate', ['shop' => $shop->shopify_domain]);
         }
 
+        if($shop->isPrivateApp())
+        {
+            config()->set('shopify.api_key', $shop->api_key);
+            config()->set('shopify.api_secret', $shop->api_secret);
+            config()->set('shopify.api_password', $shop->shopify_token);
+            config()->set('shopify.easdk_enabled', false);
+        }
+
         // Shop is OK, move on...
         $response = $next($request);
         if (!$response instanceof Response) {

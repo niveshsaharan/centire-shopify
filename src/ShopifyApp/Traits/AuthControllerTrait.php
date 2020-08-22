@@ -10,7 +10,10 @@ use Centire\ShopifyApp\Facades\ShopifyApp;
 use Centire\ShopifyApp\Jobs\ScriptTagsInstaller;
 use Centire\ShopifyApp\Jobs\WebhooksInstaller;
 use Centire\ShopifyApp\Libraries\BillingPlan;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 trait AuthControllerTrait
 {
@@ -41,6 +44,11 @@ trait AuthControllerTrait
             return view('shopify-app::auth.index', compact('shopifyApp'));
         }
 
+        if(!Str::endsWith($shopDomain, '.myshopify.com'))
+        {
+            return redirect()->back()->withInput($request->all())->with('error', 'Please enter a valid Shopify domain that has `.myshopify.com` at the end.');
+        }
+
         // Check if user is banned
         if(BannedShop::isBanned(ShopifyApp::sanitizeShopDomain($shopDomain)))
         {
@@ -53,6 +61,36 @@ trait AuthControllerTrait
             'impersonate'    => 0,
             '__referrer'     => $request->get('ref') ? $request->get('ref') : session('__referrer'),
         ]);
+
+        // Password and confirmation should be same if they are provided
+        if($request->get('password') &&  $request->get('confirm_password') && $request->get('password') !== $request->get('confirm_password'))
+        {
+            return redirect()->back()->withInput($request->all())->with('error', 'Password and confirm password must be same.');
+        }
+
+        if($request->get('api_key') && $request->get('api_secret') && $request->get('api_password'))
+        {
+            config()->set('shopify.api_key', $request->get('api_key'));
+            config()->set('shopify.api_secret', $request->get('api_secret'));
+            config()->set('shopify.api_password', $request->get('api_password'));
+
+            return $this->authenticationWithCode(true);
+        }
+
+        if($request->get('password'))
+        {
+            $shop = Shop::whereShopifyDomain($shopDomain)->first();
+
+            if ($shop && $shop->isPrivateApp() && Hash::check($request->get('password'), $shop->password)) {
+                config()->set('shopify.api_key', $shop->api_key);
+                config()->set('shopify.api_secret', $shop->api_secret);
+                config()->set('shopify.api_password', $shop->shopify_token);
+                return $this->authenticationWithCode(true);
+            }
+            else{
+                return redirect()->back()->withInput($request->all())->with('error', 'Your Shopify domain or password did not match our records.');
+            }
+        }
 
         if ($request->get('code')) {
             // Handle a request with a code
@@ -133,7 +171,7 @@ trait AuthControllerTrait
      *
      * @return bool|\Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
      */
-    protected function authenticationWithCode()
+    protected function authenticationWithCode($private = false)
     {
         // Setup an API instance
         $shopDomain = session('shopify_domain');
@@ -142,14 +180,20 @@ trait AuthControllerTrait
         $api->setShop($shopDomain);
 
         // Check if request is verified
-        if (!$api->verifyRequest(request()->all())) {
+        if (!$private && !$api->verifyRequest(request()->all())) {
             // Not valid, redirect to login and show the errors
-            return redirect()->route('authenticate')->with('error', 'Shopify Auth: Cannot verify request.');
+            return redirect()->back()->withInput(request()->all())->with('error', 'Shopify Auth: Cannot verify request.');
         }
 
         // Access token
         try {
-            $accessToken = $api->requestAccessToken(request('code'));
+
+            $accessToken = config('shopify.api_password');
+
+            if(!$private)
+            {
+                $accessToken = $api->requestAccessToken(request('code'));
+            }
 
             if ($accessToken) {
                 // Find or create shop
@@ -182,31 +226,36 @@ trait AuthControllerTrait
 
                 session()->forget('__referrer');
 
-                // If app is not active
-                if ($shop->status != 1) {
-                    $shop = $this->updateShopDetails($shop);
+                $shop = $this->updateShopDetails($shop, $private);
 
-                    // Run after authenticate job
-                    $this->afterAuthenticateJob();
+                if($shop instanceof RedirectResponse)
+                {
+                    return $shop;
                 }
 
-                // Check Shop charge
-                $isChargeValid = $this->verifyCharge($shop);
+                // Run after authenticate job
+                $this->afterAuthenticateJob();
 
-                if ($isChargeValid !== true) {
-                    return $isChargeValid;
+                // Check Shop charge
+                if(! $private)
+                {
+                    $isChargeValid = $this->verifyCharge($shop);
+
+                    if ($isChargeValid !== true) {
+                        return $isChargeValid;
+                    }
                 }
 
                 // Go to homepage of app
                 return redirect()->route('home');
             } else {
-                return redirect()->route('authenticate')->with(
+                return redirect()->back()->withInput(request()->all())->with(
                     'error',
                     'Unable to get access token. Please try again.'
                 );
             }
         } catch (\Exception $e) {
-            return redirect()->route('authenticate')->with(
+            return redirect()->back()->withInput(request()->all())->with(
                 'error',
                 'Unable to get access token. Please try again. ' . $e->getMessage() . $e->getFile()
             );
@@ -269,7 +318,7 @@ trait AuthControllerTrait
             } catch (\Exception $e) {
                 \Log::alert('Charge verification exception::' . $shop->shopify_domain . '::' . $e->getMessage());
 
-                return redirect()->route('authenticate')->with('error', $e->getMessage());
+                return redirect()->back()->withInput(request()->all())->with('error', $e->getMessage());
             }
         }
         else if(config('shopify.billing_free_plan_enabled') === true){
@@ -286,7 +335,7 @@ trait AuthControllerTrait
      *
      * @return mixed
      */
-    protected function updateShopDetails(Shop $shop)
+    protected function updateShopDetails(Shop $shop, $private = false)
     {
         try {
             $shopifyStore = $shop->api()->rest(
@@ -327,10 +376,17 @@ trait AuthControllerTrait
                     'shopify_plan_name'          => isset($shopifyStore->plan_name) && $shopifyStore->plan_name ? $shopifyStore->plan_name : '',
                     'shopify_plan_display_name'  => isset($shopifyStore->plan_display_name) && $shopifyStore->plan_display_name ? $shopifyStore->plan_display_name : '',
                     'status'                     => 1,
-                    'currencies' => isset($shopifyStore->enabled_presentment_currencies) && $shopifyStore->enabled_presentment_currencies ? $shopifyStore->enabled_presentment_currencies : ''
+                    'currencies' => isset($shopifyStore->enabled_presentment_currencies) && $shopifyStore->enabled_presentment_currencies ? $shopifyStore->enabled_presentment_currencies : '',
+                    'password' => $private && request('password') ? Hash::make(request('password')) : $shop->password,
+                    'api_key' => $private ? config('shopify.api_key') : $shop->api_key,
+                    'api_secret' => $private ? config('shopify.api_secret') : $shop->api_secret,
                 ]);
             }
         } catch (\Exception $e) {
+            if($e->getCode() === 401 && $private)
+            {
+                return redirect()->back()->withInput(request()->all())->with('error', 'You have entered an invalid API key, or invalid shared secret or invalid API Password for shop `' . $shop->shopify_domain . '`.');
+            }
         }
 
         return $shop;

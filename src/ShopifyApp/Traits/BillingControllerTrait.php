@@ -19,6 +19,22 @@ trait BillingControllerTrait
     public function index()
     {
         if ($shop = ShopifyApp::shop()) {
+
+            if($shop->isPrivateApp())
+            {
+                if(! $shop->stripe_id)
+                {
+                    $shop->createAsStripeCustomer();
+                }
+
+                if ($shop->subscription(stripe_plan()) && $shop->subscription(stripe_plan())->hasIncompletePayment()) {
+                    return redirect(route('cashier.payment', $shop->subscription(stripe_plan())->latestPayment()->id) );
+                }
+
+                return redirect(route('stripe.payment.subscribe'));
+            }
+
+
             $planDetails = $this->planDetails();
 
             if ($planDetails && $planDetails['price'] > 0) {
