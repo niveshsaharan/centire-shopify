@@ -213,10 +213,6 @@ trait AuthControllerTrait
                 $shop->shopify_scopes = array_filter(array_map('trim', explode(',', config('shopify.api_scopes'))));
                 $shop->save();
 
-                // Install webhooks and scripts
-                $this->installWebhooks();
-                $this->installScriptTags();
-
                 // Save referrer to cache
                 $referrer = session('__referrer');
 
@@ -232,6 +228,10 @@ trait AuthControllerTrait
                 {
                     return $shop;
                 }
+
+                // Install webhooks and scripts
+                $this->installWebhooks();
+                $this->installScriptTags();
 
                 // Run after authenticate job
                 $this->afterAuthenticateJob();
