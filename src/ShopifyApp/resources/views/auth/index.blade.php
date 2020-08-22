@@ -69,14 +69,19 @@
                                     </span>
                     </div>
                     <div>
+                        @if(request('type') !== 'private')
                         <div class="Polaris-Banner__Heading"
                              id="Banner1Heading">
                             <p class="Polaris-Heading">{{ config('shopify.app_name') }} is for Shopify and
                                 Shopify Plus stores only
                             </p>
                         </div>
+                        @endif
                         <div class="Polaris-Banner__Content"
                              id="Banner1Content">
+                            @if(request('type') === 'private')
+                                <p>We have requested Shopify to have another look on their decision of removing our apps from the app store. While we are waiting for their response, We have made the app completely free to use till September 30th, 2020</p>
+                            @else
                             <p>Shopify is a commerce platform that allows anyone to easily sell online, at a
                                 retail location, and everywhere in between.
                             </p>
@@ -95,6 +100,7 @@
                                     </div>
                                 </div>
                             </div>
+                            @endif
                         </div>
                     </div>
                 </div>
