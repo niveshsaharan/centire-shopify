@@ -129,6 +129,15 @@ class ShopifyApp
      */
     public function api()
     {
+        // TODO Temporary
+        if($this->shop && $this->shop->isPrivateApp())
+        {
+            config()->set('shopify.api_key', $this->shop->api_key);
+            config()->set('shopify.api_secret', $this->shop->api_secret);
+            config()->set('shopify.api_password', $this->shop->shopify_token);
+            config()->set('shopify.easdk_enabled', false);
+        }
+
         $apiClass = config('shopify.api_class');
 
         /**
