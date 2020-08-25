@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use \Illuminate\Support\Str;
 
 class ScriptTagsInstaller implements ShouldQueue
 {
@@ -38,6 +39,21 @@ class ScriptTagsInstaller implements ShouldQueue
     public function __construct($shop, array $scriptTags)
     {
         $this->shop = $shop;
+
+        // Create dynamic URL for cloud
+        foreach ($scriptTags as $key => $scriptTag) {
+            if(! Str::startsWith($scriptTag['src'], 'http'))
+            {
+                if(config('shopify.shopify_assets_source') === 'cloud' && config('filesystems.cloud'))
+                {
+                    $scriptTags[$key]['src'] = \Storage::cloud()->url('/assets/' . $scriptTag['src']);
+                }
+                else{
+                    unset( $scriptTags[$key]);
+                }
+            }
+        }
+
         $this->scriptTags = $scriptTags;
     }
 
