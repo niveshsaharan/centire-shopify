@@ -24,7 +24,11 @@ trait BillingControllerTrait
             {
                 if(! $shop->stripe_id)
                 {
-                    $shop->createOrGetStripeCustomer();
+                    $shop->createOrGetStripeCustomer([
+                        'metadata' => [
+                            'shopify_domain' => $shop->shopify_domain,
+                        ]
+                    ]);
                 }
 
                 if ($shop->subscription(stripe_plan()) && $shop->subscription(stripe_plan())->hasIncompletePayment()) {
