@@ -24,7 +24,7 @@ trait BillingControllerTrait
             {
                 if(! $shop->stripe_id)
                 {
-                    $shop->createAsStripeCustomer();
+                    $shop->createOrGetStripeCustomer();
                 }
 
                 if ($shop->subscription(stripe_plan()) && $shop->subscription(stripe_plan())->hasIncompletePayment()) {
