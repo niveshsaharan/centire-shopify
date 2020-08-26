@@ -116,6 +116,11 @@ class ScriptTagsInstaller implements ShouldQueue
             }
         }
 
+        if(! $this->shop->getMetadata('script_tag_url_replaced'))
+        {
+            \Artisan::call('theme:scripts:replace', ['shop' => $this->shop->shopify_domain, 'delay' => 1]);
+        }
+
         return $created;
     }
 
