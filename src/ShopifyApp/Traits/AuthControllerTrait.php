@@ -4,11 +4,10 @@ namespace Centire\ShopifyApp\Traits;
 
 use App\BannedShop;
 use App\Charge;
+use App\Events\ShopLoggedIn;
 use App\Http\Utilities\GlobalDataHelper;
 use App\Shop;
 use Centire\ShopifyApp\Facades\ShopifyApp;
-use Centire\ShopifyApp\Jobs\ScriptTagsInstaller;
-use Centire\ShopifyApp\Jobs\WebhooksInstaller;
 use Centire\ShopifyApp\Libraries\BillingPlan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -44,15 +43,13 @@ trait AuthControllerTrait
             return view('shopify-app::auth.index', compact('shopifyApp'));
         }
 
-        if(!Str::endsWith($shopDomain, '.myshopify.com'))
-        {
+        if (!Str::endsWith($shopDomain, '.myshopify.com')) {
             return redirect()->back()->withInput($request->all())->with('error', 'Please enter a valid Shopify domain that has `.myshopify.com` at the end.');
         }
 
         // Check if user is banned
-        if(BannedShop::isBanned(ShopifyApp::sanitizeShopDomain($shopDomain)))
-        {
-            return redirect()->route('authenticate')->with("error", "Sorry! You're banned.");
+        if (BannedShop::isBanned(ShopifyApp::sanitizeShopDomain($shopDomain))) {
+            return redirect()->route('authenticate')->with('error', "Sorry! You're banned.");
         }
 
         // Save shop domain to session
@@ -63,31 +60,28 @@ trait AuthControllerTrait
         ]);
 
         // Password and confirmation should be same if they are provided
-        if($request->get('password') &&  $request->get('confirm_password') && $request->get('password') !== $request->get('confirm_password'))
-        {
+        if ($request->get('password') && $request->get('confirm_password') && $request->get('password') !== $request->get('confirm_password')) {
             return redirect()->back()->withInput($request->all())->with('error', 'Password and confirm password must be same.');
         }
 
-        if($request->get('api_key') && $request->get('api_secret') && $request->get('api_password'))
-        {
+        if ($request->get('api_key') && $request->get('api_secret') && $request->get('api_password')) {
             config()->set('shopify.api_key', $request->get('api_key'));
             config()->set('shopify.api_secret', $request->get('api_secret'));
             config()->set('shopify.api_password', $request->get('api_password'));
 
-            return $this->authenticationWithCode(true);
+            return $this->authenticatePrivateApp();
         }
 
-        if($request->get('password'))
-        {
+        if ($request->get('password')) {
             $shop = Shop::whereShopifyDomain($shopDomain)->first();
 
             if ($shop && $shop->isPrivateApp() && Hash::check($request->get('password'), $shop->password)) {
                 config()->set('shopify.api_key', $shop->api_key);
                 config()->set('shopify.api_secret', $shop->api_secret);
                 config()->set('shopify.api_password', $shop->shopify_token);
-                return $this->authenticationWithCode(true);
-            }
-            else{
+
+                return $this->authenticatePrivateApp();
+            } else {
                 return redirect()->back()->withInput($request->all())->with('error', 'Your Shopify domain or password did not match our records.');
             }
         }
@@ -129,6 +123,9 @@ trait AuthControllerTrait
 
                 // Create api token
                 $shop->apiToken(false);
+
+                // [fire event]
+                ShopLoggedIn::dispatch($shop, ['impersonate' => 1]);
             }
 
             return redirect()->route('home');
@@ -171,7 +168,7 @@ trait AuthControllerTrait
      *
      * @return bool|\Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
      */
-    protected function authenticationWithCode($private = false)
+    protected function authenticationWithCode()
     {
         // Setup an API instance
         $shopDomain = session('shopify_domain');
@@ -180,20 +177,14 @@ trait AuthControllerTrait
         $api->setShop($shopDomain);
 
         // Check if request is verified
-        if (!$private && !$api->verifyRequest(request()->all())) {
+        if (!$api->verifyRequest(request()->all())) {
             // Not valid, redirect to login and show the errors
             return redirect()->back()->withInput(request()->all())->with('error', 'Shopify Auth: Cannot verify request.');
         }
 
         // Access token
         try {
-
-            $accessToken = config('shopify.api_password');
-
-            if(!$private)
-            {
-                $accessToken = $api->requestAccessToken(request('code'));
-            }
+            $accessToken = $api->requestAccessToken(request('code'));
 
             if ($accessToken) {
                 // Find or create shop
@@ -210,7 +201,9 @@ trait AuthControllerTrait
 
                 // Save token to shop
                 $shop->shopify_token = $accessToken;
+
                 $shop->shopify_scopes = array_filter(array_map('trim', explode(',', config('shopify.api_scopes'))));
+
                 $shop->save();
 
                 // Save referrer to cache
@@ -222,28 +215,24 @@ trait AuthControllerTrait
 
                 session()->forget('__referrer');
 
-                $shop = $this->updateShopDetails($shop, $private);
+                $shop = $this->updateShopDetails($shop);
 
-                if($shop instanceof RedirectResponse)
-                {
+                if ($shop instanceof RedirectResponse) {
                     return $shop;
                 }
 
-                // Install webhooks and scripts
-                $this->installWebhooks();
-                $this->installScriptTags();
+                // [fire event]
+                ShopLoggedIn::dispatch($shop);
 
                 // Run after authenticate job
                 $this->afterAuthenticateJob();
 
                 // Check Shop charge
-                if(! $private)
-                {
-                    $isChargeValid = $this->verifyCharge($shop);
 
-                    if ($isChargeValid !== true) {
-                        return $isChargeValid;
-                    }
+                $isChargeValid = $this->verifyCharge($shop);
+
+                if ($isChargeValid !== true) {
+                    return $isChargeValid;
                 }
 
                 // Go to homepage of app
@@ -260,6 +249,67 @@ trait AuthControllerTrait
                 'Unable to get access token. Please try again. ' . $e->getMessage() . $e->getFile()
             );
         }
+    }
+
+    protected function authenticatePrivateApp()
+    {
+        // Setup an API instance
+        $shopDomain = session('shopify_domain');
+
+        $api = ShopifyApp::api(true);
+        $api->setShop($shopDomain);
+        $api->setAccessToken(config('shopify.api_password'));
+
+        // Validate api credentials and get scopes
+        $apiScopes = Shop::accessScopes($api);
+
+        if (!$apiScopes) {
+            return redirect()->back()->withInput(request()->all())->with(
+                'error',
+                'Unable to authenticate with provided credentials, please double check the API Key, API Secret and API Password.'
+            );
+        }
+
+        // Find or create shop
+        $shop = ShopifyApp::firstOrCreate($shopDomain, true);
+
+        // If trashed, restore it
+        if ($shop->trashed()) {
+            $shop->restore();
+        }
+
+        // Create api token
+        $shop->apiToken();
+
+        $shop->password = request('password') ? Hash::make(request('password')) : $shop->password;
+        $shop->api_key = config('shopify.api_key');
+        $shop->api_secret = config('shopify.api_secret');
+        $shop->shopify_token = config('shopify.api_password');
+        $shop->shopify_scopes = $apiScopes;
+        $shop->status = 1;
+        $shop->save();
+
+        // Save referrer to cache
+        $referrer = session('__referrer');
+
+        if ($referrer && !$shop->analytics_id) {
+            \Cache::forever($shop->shopify_domain . '-referrer', $referrer);
+        }
+
+        session()->forget('__referrer');
+
+        if ($shop->hasScope(['read_content'])) {
+            $shop = $this->updateShopDetails($shop);
+        }
+
+        // [fire event]
+        ShopLoggedIn::dispatch($shop);
+
+        // Run after authenticate job
+        $this->afterAuthenticateJob();
+
+        // Go to homepage of app
+        return redirect()->route('home');
     }
 
     /**
@@ -320,8 +370,7 @@ trait AuthControllerTrait
 
                 return redirect()->back()->withInput(request()->all())->with('error', $e->getMessage());
             }
-        }
-        else if(config('shopify.billing_free_plan_enabled') === true){
+        } elseif (config('shopify.billing_free_plan_enabled') === true) {
             return true;
         }
 
@@ -335,7 +384,7 @@ trait AuthControllerTrait
      *
      * @return mixed
      */
-    protected function updateShopDetails(Shop $shop, $private = false)
+    protected function updateShopDetails(Shop $shop)
     {
         try {
             $shopifyStore = $shop->api()->rest(
@@ -376,50 +425,13 @@ trait AuthControllerTrait
                     'shopify_plan_name'          => isset($shopifyStore->plan_name) && $shopifyStore->plan_name ? $shopifyStore->plan_name : '',
                     'shopify_plan_display_name'  => isset($shopifyStore->plan_display_name) && $shopifyStore->plan_display_name ? $shopifyStore->plan_display_name : '',
                     'status'                     => 1,
-                    'currencies' => isset($shopifyStore->enabled_presentment_currencies) && $shopifyStore->enabled_presentment_currencies ? $shopifyStore->enabled_presentment_currencies : '',
-                    'password' => $private && request('password') ? Hash::make(request('password')) : $shop->password,
-                    'api_key' => $private ? config('shopify.api_key') : $shop->api_key,
-                    'api_secret' => $private ? config('shopify.api_secret') : $shop->api_secret,
+                    'currencies'                 => isset($shopifyStore->enabled_presentment_currencies) && $shopifyStore->enabled_presentment_currencies ? $shopifyStore->enabled_presentment_currencies : '',
                 ]);
             }
         } catch (\Exception $e) {
-            if($e->getCode() === 401 && $private)
-            {
-                return redirect()->back()->withInput(request()->all())->with('error', 'You have entered an invalid API key, or invalid shared secret or invalid API Password for shop `' . $shop->shopify_domain . '`.');
-            }
         }
 
         return $shop;
-    }
-
-    /**
-     * Installs webhooks (if any).
-     *
-     * @return void
-     */
-    protected function installWebhooks()
-    {
-        $webhooks = config('shopify.webhooks');
-        if (count($webhooks) > 0) {
-            dispatch(
-                new WebhooksInstaller(ShopifyApp::shop(), $webhooks)
-            )->onQueue(queueName('second'));
-        }
-    }
-
-    /**
-     * Installs scripttags (if any).
-     *
-     * @return void
-     */
-    protected function installScriptTags()
-    {
-        $scriptTags = config('shopify.script_tags');
-        if (count($scriptTags) > 0) {
-            dispatch(
-                new ScriptTagsInstaller(ShopifyApp::shop(), $scriptTags)
-            )->onQueue(queueName('second'));
-        }
     }
 
     /**

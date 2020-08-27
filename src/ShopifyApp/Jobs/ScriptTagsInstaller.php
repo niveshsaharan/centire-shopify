@@ -42,14 +42,11 @@ class ScriptTagsInstaller implements ShouldQueue
 
         // Create dynamic URL for cloud
         foreach ($scriptTags as $key => $scriptTag) {
-            if(! Str::startsWith($scriptTag['src'], 'http'))
-            {
-                if(config('shopify.shopify_assets_source') === 'cloud' && config('filesystems.cloud'))
-                {
+            if (!Str::startsWith($scriptTag['src'], 'http')) {
+                if (config('shopify.shopify_assets_source') === 'cloud' && config('filesystems.cloud')) {
                     $scriptTags[$key]['src'] = \Storage::cloud()->url('/assets/' . $scriptTag['src']);
-                }
-                else{
-                    unset( $scriptTags[$key]);
+                } else {
+                    unset($scriptTags[$key]);
                 }
             }
         }
@@ -80,6 +77,10 @@ class ScriptTagsInstaller implements ShouldQueue
         // Keep track of whats created
         $created = [];
 
+        if (!$this->shop->hasScope(['read_script_tags', 'write_script_tags'])) {
+            return [];
+        }
+
         // Get the current scriptTags installed on the shop
         $api = $this->shop->api();
 
@@ -109,15 +110,13 @@ class ScriptTagsInstaller implements ShouldQueue
         }
 
         // Delete
-        foreach($shopScriptTags as $scriptTag)
-        {
-            if(! in_array($scriptTag->src, $validScriptTags)){
+        foreach ($shopScriptTags as $scriptTag) {
+            if (!in_array($scriptTag->src, $validScriptTags)) {
                 $api->rest('DELETE', '/script_tags/' . $scriptTag->id . '.json', []);
             }
         }
 
-        if(! $this->shop->getMetadata('script_tag_url_replaced'))
-        {
+        if ($this->shop->hasScope(['read_themes', 'write_themes'])) {
             \Artisan::call('theme:scripts:replace', ['shop' => $this->shop->shopify_domain, 'delay' => 1]);
         }
 

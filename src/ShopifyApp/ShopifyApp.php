@@ -127,14 +127,18 @@ class ShopifyApp
      *
      * @return BasicShopifyAPI
      */
-    public function api()
+    public function api($private = false)
     {
+        $apiKey = config('shopify.api_key');
+        $apiSecret = config('shopify.api_secret');
+        $apiPassword = config('shopify.api_password');
+
         // TODO Temporary
-        if($this->shop && $this->shop->isPrivateApp())
-        {
-            config()->set('shopify.api_key', $this->shop->api_key);
-            config()->set('shopify.api_secret', $this->shop->api_secret);
-            config()->set('shopify.api_password', $this->shop->shopify_token);
+        if ($this->shop && $this->shop->isPrivateApp()) {
+            $private = true;
+            $apiKey = $this->shop->api_key;
+            $apiSecret = $this->shop->api_secret;
+            $apiPassword = $this->shop->shopify_token;
             config()->set('shopify.easdk_enabled', false);
         }
 
@@ -143,9 +147,13 @@ class ShopifyApp
         /**
          * @var BasicShopifyAPI $api
          */
-        $api = $apiClass ? new $apiClass() : new BasicShopifyAPI();
-        $api->setApiKey(config('shopify.api_key'));
-        $api->setApiSecret(config('shopify.api_secret'));
+        $api = $apiClass ? new $apiClass($private) : new BasicShopifyAPI($private);
+        $api->setApiKey($apiKey);
+        $api->setApiSecret($apiSecret);
+
+        if ($apiPassword) {
+            $api->setApiPassword($apiPassword);
+        }
 
         return $api;
     }
