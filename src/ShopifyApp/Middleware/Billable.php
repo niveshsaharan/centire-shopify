@@ -25,7 +25,7 @@ class Billable
                 abort(401, 'Authentication required.');
             }
 
-            if (!$shop->isPaid() && !$shop->isGrandfathered()) {
+            if (!$shop->isPaid() && !$shop->isGrandfathered() && !$shop->isTester()) {
                 // They're not grandfathered in, and there is no charge or charge was declined... redirect to billing
                 abort(402, 'Payment required.');
             }
