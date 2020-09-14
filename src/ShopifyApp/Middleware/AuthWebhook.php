@@ -35,6 +35,10 @@ class AuthWebhook
         // From https://help.shopify.com/api/getting-started/webhooks#verify-webhook
         $hmacLocal = base64_encode(hash_hmac('sha256', $data, $apiSecret, true));
         if (!hash_equals($hmac, $hmacLocal) || empty($shopDomain)) {
+
+            // Just return with 201
+            return response('', 201);
+
             // Issue with HMAC or missing shop header
             abort(401, 'Invalid webhook signature');
         }

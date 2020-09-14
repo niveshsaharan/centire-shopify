@@ -322,6 +322,9 @@ trait AuthControllerTrait
      */
     protected function verifyCharge($shop)
     {
+        // We don't need it since Shopify f**ked up everything
+        return true;
+
         if ($shop->isGrandfathered() || !config('shopify.billing_enabled')) {
             return true;
         }
