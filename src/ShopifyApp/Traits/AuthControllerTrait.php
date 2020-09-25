@@ -199,12 +199,16 @@ trait AuthControllerTrait
                 // Create api token
                 $shop->apiToken();
 
-                // Save token to shop
-                $shop->shopify_token = $accessToken;
+                if(!$shop->isPrivateApp() )
+                {
+                    // Save token to shop
+                    $shop->shopify_token = $accessToken;
 
-                $shop->shopify_scopes = array_filter(array_map('trim', explode(',', config('shopify.api_scopes'))));
+                    $shop->shopify_scopes = array_filter(array_map('trim', explode(',', config('shopify.api_scopes'))));
 
-                $shop->save();
+                    $shop->save();
+                }
+
 
                 // Save referrer to cache
                 $referrer = session('__referrer');
