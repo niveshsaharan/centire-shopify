@@ -73,10 +73,16 @@ class WebhooksInstaller implements ShouldQueue
             ['limit' => 250, 'fields' => 'id,address']
         )->body->webhooks;
 
+        $installedWebhooks = [];
+
+        foreach ($shopWebhooks as $shopWebhook) {
+            $installedWebhooks[$shopWebhook->address] = $shopWebhook->id;
+        }
+
+        $deleteWebhooks = $installedWebhooks;
         foreach ($this->webhooks as $webhook) {
             // Check if the required webhook exists on the shop
-            if (!$this->webhookExists($shopWebhooks, $webhook)) {
-                // It does not... create the webhook
+            if(! isset($installedWebhooks[$webhook['address']])){
                 $api->rest('POST', '/webhooks.json', [
                     'webhook' => array_only($webhook, [
                         'topic',
@@ -85,6 +91,16 @@ class WebhooksInstaller implements ShouldQueue
                 ]);
 
                 $created[] = $webhook;
+            }
+
+            if(isset($installedWebhooks[$webhook['address']])){
+                unset($deleteWebhooks[$webhook['address']]);
+            }
+        }
+
+        if($deleteWebhooks){
+            foreach ($deleteWebhooks as $deleteWebhook){
+                $api->rest('DELETE', '/webhooks/' . $deleteWebhook . '.json', []);
             }
         }
 
