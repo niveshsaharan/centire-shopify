@@ -543,7 +543,7 @@ class BasicShopifyAPI
         }
 
         // Grab the API call limit header returned from Shopify
-        $calls = explode("/", $$header[0]);
+        $calls = explode("/", $header[0]);
         $this->apiCallLimits["rest"] = [
             "left" => (int) $calls[1] - $calls[0],
             "made" => (int) $calls[0],
